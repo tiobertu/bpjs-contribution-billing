@@ -69,22 +69,40 @@ export function todayString(): string {
   return `${y}-${m}-${day}`;
 }
 
+export const BULAN_NAMA = [
+  "Januari",
+  "Februari",
+  "Maret",
+  "April",
+  "Mei",
+  "Juni",
+  "Juli",
+  "Agustus",
+  "September",
+  "Oktober",
+  "November",
+  "Desember",
+] as const;
+
 // Mendapatkan nama bulan
 export function bulanIni(): string {
-  const bulan = [
-    "Januari",
-    "Februari",
-    "Maret",
-    "April",
-    "Mei",
-    "Juni",
-    "Juli",
-    "Agustus",
-    "September",
-    "Oktober",
-    "November",
-    "Desember",
-  ];
   const d = new Date();
-  return `${bulan[d.getMonth()]} ${d.getFullYear()}`;
+  return `${BULAN_NAMA[d.getMonth()]} ${d.getFullYear()}`;
+}
+
+export function bulanLabel(bulan: number, tahun: number): string {
+  return `${BULAN_NAMA[bulan]} ${tahun}`;
+}
+
+export function daftarPeriodeTersedia(): Array<{ bulan: number; tahun: number }> {
+  const now = new Date();
+  const tahunAwal = now.getFullYear() - 2;
+  const tahunAkhir = now.getFullYear() + 1;
+  const hasil: Array<{ bulan: number; tahun: number }> = [];
+  for (let tahun = tahunAwal; tahun <= tahunAkhir; tahun++) {
+    for (let bulan = 0; bulan < 12; bulan++) {
+      hasil.push({ bulan, tahun });
+    }
+  }
+  return hasil;
 }

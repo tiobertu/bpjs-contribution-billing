@@ -7,6 +7,7 @@ interface RupiahInputProps {
   onChange: (value: number) => void;
   className?: string;
   placeholder?: string;
+  allowEmpty?: boolean;
 }
 
 // Input rupiah dengan pemisah ribuan, tanpa desimal
@@ -15,16 +16,21 @@ export function RupiahInput({
   onChange,
   className,
   placeholder,
+  allowEmpty = false,
 }: RupiahInputProps) {
-  const [text, setText] = useState(formatInputNumber(value));
+  const [text, setText] = useState(allowEmpty && value === 0 ? "" : formatInputNumber(value));
 
   useEffect(() => {
-    setText(formatInputNumber(value));
-  }, [value]);
+    setText(allowEmpty && value === 0 ? "" : formatInputNumber(value));
+  }, [value, allowEmpty]);
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
     const raw = e.target.value;
-    // Hanya izinkan digit dan tanda minus saat mengetik
+    if (allowEmpty && raw === "") {
+      setText("");
+      onChange(0);
+      return;
+    }
     const clean = raw.replace(/[^\d-]/g, "");
     setText(clean);
     const num = parseInputNumber(clean);
@@ -32,6 +38,10 @@ export function RupiahInput({
   }
 
   function handleBlur() {
+    if (allowEmpty && text === "") {
+      setText("");
+      return;
+    }
     setText(formatInputNumber(value));
   }
 

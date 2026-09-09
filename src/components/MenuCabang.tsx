@@ -199,7 +199,7 @@ export function MenuCabang() {
         </div>
       </div>
 
-      <div id="print-cabang">
+      <div id="print-cabang" className="print-cabang-layout">
         <PrintHeader
           title="Data Pegawai & Iuran BPJS per Kantor Cabang"
           subtitle={
@@ -209,14 +209,14 @@ export function MenuCabang() {
           }
         />
 
-        <div className="space-y-8">
+        <div className="space-y-8 print-cabang-sections">
           {cabangTampil.map((namaCabang) => {
             const list = listTampil.filter((p) => p.cabang === namaCabang);
             if (pilih === SEMUA && cari.trim() && list.length === 0) return null;
             const subTK = list.reduce((a, p) => a + p.tk, 0);
             const subKES = list.reduce((a, p) => a + p.kes, 0);
             return (
-              <div key={namaCabang}>
+              <div key={namaCabang} className="print-cabang-section">
                 <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
                   <h3 className="text-base font-bold text-blue-800">
                     📍 {namaCabang}
@@ -357,6 +357,76 @@ export function MenuCabang() {
 
         <PrintFooter blok={pilih === SEMUA ? undefined : pilih} />
       </div>
+
+      <style>{`
+        .print-cabang-layout {
+          color: #0f172a;
+        }
+
+        @media print {
+          @page {
+            size: A4 portrait;
+            margin: 12mm 10mm 12mm 10mm;
+          }
+
+          body {
+            background: white !important;
+          }
+
+          .print-cabang-layout {
+            font-size: 9px;
+          }
+
+          .print-cabang-layout .print-cabang-sections {
+            display: block;
+            break-inside: avoid;
+            page-break-inside: avoid;
+          }
+
+          .print-cabang-layout .print-cabang-section {
+            break-inside: avoid;
+            page-break-inside: avoid;
+            margin-bottom: 12px;
+          }
+
+          .print-cabang-layout .overflow-x-auto,
+          .print-cabang-layout .overflow-hidden {
+            overflow: visible !important;
+          }
+
+          .print-cabang-layout table {
+            width: 100% !important;
+            table-layout: fixed;
+            border-collapse: collapse;
+          }
+
+          .print-cabang-layout th,
+          .print-cabang-layout td {
+            white-space: normal !important;
+            overflow-wrap: anywhere;
+            word-break: break-word;
+            font-size: 8.8px !important;
+            padding: 4px 5px !important;
+            vertical-align: top !important;
+          }
+
+          .print-cabang-layout th {
+            letter-spacing: 0.08em !important;
+          }
+
+          .print-cabang-layout input,
+          .print-cabang-layout select {
+            width: 100% !important;
+            min-width: 0 !important;
+            font-size: 8.8px !important;
+            padding: 3px 4px !important;
+          }
+
+          .print-cabang-layout .no-print {
+            display: none !important;
+          }
+        }
+      `}</style>
     </div>
   );
 }

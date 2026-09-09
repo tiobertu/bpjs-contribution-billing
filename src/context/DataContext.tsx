@@ -142,6 +142,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       if (patch.nipb !== undefined) umum.nipb = patch.nipb;
       if (patch.cabang !== undefined) umum.namaPegawai = patch.cabang;
       if (patch.tanggalLahir !== undefined) umum.tanggalLahir = patch.tanggalLahir;
+      if ((patch as any).tanggalInput !== undefined)
+        (umum as any).tanggalInput = (patch as any).tanggalInput;
 
       setDbTK(
         dbTK.map((d) =>
@@ -187,6 +189,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         jumlahBulanLalu: 0,
         namaPegawai: cabang,
         tanggalLahir: "",
+        tanggalInput: "",
         iuranBulanIni: 0,
       };
       setDbTK([...dbTK, { ...baru, id: "dtk" + key }]);
@@ -206,6 +209,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           jumlahBulanLalu: toInt(r.tk),
           namaPegawai: r.cabang,
           tanggalLahir: r.tanggalLahir,
+          tanggalInput: "",
           iuranBulanIni: toInt(r.tk),
         }))
       );
@@ -218,6 +222,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           jumlahBulanLalu: toInt(r.kes),
           namaPegawai: r.cabang,
           tanggalLahir: r.tanggalLahir,
+          tanggalInput: "",
           iuranBulanIni: toInt(r.kes),
         }))
       );

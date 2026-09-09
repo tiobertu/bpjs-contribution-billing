@@ -11,6 +11,8 @@ export interface DatabasePeserta {
   /** kolom "Nama Pegawai" dipakai untuk menyimpan Kantor Cabang */
   namaPegawai: string;
   tanggalLahir: string;
+  /** tanggal saat data bulan ini diinput; bila kosong maka iuran bulan ini dianggap belum ada */
+  tanggalInput: string;
   iuranBulanIni: number;
 }
 
@@ -53,6 +55,7 @@ export const seedDatabaseTK: DatabasePeserta[] = dataPegawai.map((p, i) => ({
   jumlahBulanLalu: p.tk,
   namaPegawai: p.cabang,
   tanggalLahir: p.tanggalLahir,
+  tanggalInput: "",
   iuranBulanIni: p.tk,
 }));
 
@@ -64,6 +67,7 @@ export const seedDatabaseKes: DatabasePeserta[] = dataPegawai.map((p, i) => ({
   jumlahBulanLalu: p.kes,
   namaPegawai: p.cabang,
   tanggalLahir: p.tanggalLahir,
+  tanggalInput: "",
   iuranBulanIni: p.kes,
 }));
 

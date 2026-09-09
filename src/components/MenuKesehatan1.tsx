@@ -34,6 +34,8 @@ export function MenuKesehatan1() {
     () => tampil.reduce((a, p) => a + hitungPremi(p.namaOrangTua), 0),
     [tampil, pegawai]
   );
+  const rataRataPremi = tampil.length > 0 ? totalPremi / tampil.length : 0;
+  const totalPeserta = tampil.length;
 
   /** Ringkasan jumlah iuran per nama pegawai penanggung */
   const perNama = useMemo(() => {
@@ -213,31 +215,54 @@ export function MenuKesehatan1() {
         </span>
       </div>
 
-      <div id="print-kes1">
+      <div id="print-kes1" className="print-kes1-shell space-y-4">
         <PrintHeader
           title="Iuran BPJS Kesehatan 1%"
           subtitle="Premi Anggota Keluarga Tambahan Karyawan KSP CU Bima"
         />
 
-        <div className="grid gap-5 lg:grid-cols-[280px_1fr]">
+        <div className="grid gap-4 md:grid-cols-3">
+          <div className="rounded-2xl border border-emerald-200 bg-gradient-to-br from-emerald-500 to-teal-600 p-4 text-white shadow-sm">
+            <p className="text-[10px] uppercase tracking-[0.2em] text-emerald-100">Total peserta</p>
+            <p className="mt-3 text-2xl font-black tabular-nums">{totalPeserta}</p>
+            <p className="mt-1 text-xs text-emerald-50">Data aktif dalam daftar</p>
+          </div>
+          <div className="rounded-2xl border border-blue-200 bg-gradient-to-br from-blue-500 to-indigo-600 p-4 text-white shadow-sm">
+            <p className="text-[10px] uppercase tracking-[0.2em] text-blue-100">Total premi</p>
+            <p className="mt-3 text-2xl font-black tabular-nums">{formatRupiah(totalPremi)}</p>
+            <p className="mt-1 text-xs text-blue-50">Jumlah seluruh iuran 1%</p>
+          </div>
+          <div className="rounded-2xl border border-amber-200 bg-gradient-to-br from-amber-400 to-orange-500 p-4 text-white shadow-sm">
+            <p className="text-[10px] uppercase tracking-[0.2em] text-amber-50">Rata-rata</p>
+            <p className="mt-3 text-2xl font-black tabular-nums">{formatRupiah(rataRataPremi)}</p>
+            <p className="mt-1 text-xs text-amber-50">Per peserta</p>
+          </div>
+        </div>
+
+        <div className="grid gap-5 xl:grid-cols-[300px_1fr]">
           {/* Panel kiri: jumlah iuran per nama */}
-          <div className="print-panel order-2 rounded-xl border border-slate-200 bg-slate-50/60 p-4 shadow-sm lg:order-1">
-            <h3 className="mb-3 text-sm font-bold uppercase tracking-wide text-slate-700">
-              Jumlah Iuran per Nama
-            </h3>
+          <div className="print-panel order-2 rounded-2xl border border-slate-200 bg-slate-50/80 p-4 shadow-sm lg:order-1">
+            <div className="mb-3 flex items-center justify-between gap-2">
+              <h3 className="text-sm font-bold uppercase tracking-wide text-slate-700">
+                Rekap per Penanggung
+              </h3>
+              <span className="rounded-full bg-emerald-100 px-2 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-emerald-700">
+                {perNama.length} nama
+              </span>
+            </div>
             <div className="max-h-[500px] space-y-2 overflow-y-auto pr-1">
               {perNama.map(([namaOrtu, info]) => (
                 <div
                   key={namaOrtu}
-                  className="flex items-center justify-between rounded-lg border border-slate-200 bg-white px-3 py-2"
+                  className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-3 py-2 shadow-sm"
                 >
                   <div className="min-w-0">
-                    <p className="truncate text-sm font-medium text-slate-800">
+                    <p className="truncate text-sm font-semibold text-slate-800">
                       {namaOrtu || "(belum dipilih)"}
                     </p>
                     <p className="text-xs text-slate-400">{info.jumlah} peserta</p>
                   </div>
-                  <p className="ml-2 shrink-0 text-sm font-bold text-emerald-700 tabular-nums">
+                  <p className="ml-2 shrink-0 text-sm font-black text-emerald-700 tabular-nums">
                     {formatRupiah(info.total)}
                   </p>
                 </div>
@@ -246,14 +271,22 @@ export function MenuKesehatan1() {
                 <p className="py-6 text-center text-sm text-slate-400">Belum ada data</p>
               )}
             </div>
-            <div className="mt-3 flex items-center justify-between rounded-lg bg-emerald-600 px-3 py-2 text-white shadow">
-              <p className="text-sm font-bold">Jumlah</p>
+            <div className="mt-3 flex items-center justify-between rounded-xl bg-emerald-600 px-3 py-2 text-white shadow">
+              <p className="text-sm font-bold">Total Premi</p>
               <p className="text-sm font-bold tabular-nums">{formatRupiah(totalPremi)}</p>
             </div>
           </div>
 
           {/* Tabel utama sesuai format */}
-          <div className="order-1 lg:order-2">
+          <div className="order-1 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm lg:order-2">
+            <div className="mb-3 flex items-center justify-between gap-2">
+              <h3 className="text-sm font-bold uppercase tracking-wide text-slate-700">
+                Daftar Peserta
+              </h3>
+              <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-slate-600">
+                {tampil.length} baris
+              </span>
+            </div>
             <Table
               head={
                 <tr>
@@ -336,6 +369,35 @@ export function MenuKesehatan1() {
             </Table>
           </div>
         </div>
+
+        <style>{`
+          .print-kes1-shell .print-panel {
+            print-color-adjust: exact;
+            -webkit-print-color-adjust: exact;
+          }
+
+          @media print {
+            .print-kes1-shell {
+              color: #0f172a;
+            }
+            .print-kes1-shell .rounded-2xl,
+            .print-kes1-shell .rounded-xl {
+              box-shadow: none !important;
+            }
+            .print-kes1-shell .no-print {
+              display: none !important;
+            }
+            .print-kes1-shell .print-panel {
+              border-color: #cbd5e1 !important;
+              background: #f8fafc !important;
+            }
+            .print-kes1-shell th,
+            .print-kes1-shell td {
+              font-size: 10.5px !important;
+            }
+          }
+        `}</style>
+
         <PrintFooter />
       </div>
     </div>

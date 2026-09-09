@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { useData } from "../context/DataContext";
 import { Button } from "./ui";
 import { cn } from "../utils/cn";
-import { formatRupiah, formatDate, bulanIni, toInt } from "../utils/format";
+import { formatRupiah, formatDate, bulanIni, bulanLabel, daftarPeriodeTersedia, toInt } from "../utils/format";
 import { printRawHtml } from "../utils/print";
 
 const SEMUA = "__SEMUA__";
@@ -33,13 +33,17 @@ export function MenuPrint() {
     dbkes: false,
   });
   const [cabangFilter, setCabangFilter] = useState<string>(SEMUA);
-  const [periode, setPeriode] = useState(bulanIni());
+  const [periode, setPeriode] = useState({
+    month: new Date().getMonth(),
+    year: new Date().getFullYear(),
+  });
   const [pakaiKop, setPakaiKop] = useState(true);
   const [pakaiTtd, setPakaiTtd] = useState(true);
   const [dibuatOleh, setDibuatOleh] = useState("Administrasi KSP CU Bima");
   const [diketahuiOleh, setDiketahuiOleh] = useState("Pimpinan KSP CU Bima");
 
   const terpilih = DAFTAR_LAPORAN.filter((l) => pilihan[l.id]);
+  const periodeLabel = bulanLabel(periode.month, periode.year);
 
   const premi1 = (namaOrtu: string) => Math.round(iuranKesByNama(namaOrtu) * 0.2);
 
@@ -54,7 +58,7 @@ export function MenuPrint() {
     if (!pakaiKop) return "";
     return `<div class="kop">
       <div class="lembaga">Koperasi Simpan Pinjam Credit Union Bima</div>
-      <div class="alamat">Tagihan Iuran BPJS Ketenagakerjaan &amp; BPJS Kesehatan · Periode ${esc(periode)}</div>
+      <div class="alamat">Tagihan Iuran BPJS Ketenagakerjaan &amp; BPJS Kesehatan · Periode ${esc(periodeLabel)}</div>
     </div>`;
   }
 
@@ -90,7 +94,7 @@ export function MenuPrint() {
       .join("");
     return `<div class="seksi">
       <p class="judul">Rekap Peserta BPJS Ketenagakerjaan &amp; BPJS Kesehatan</p>
-      <p class="subjudul">Rekapitulasi Iuran per Kantor Cabang — Periode ${esc(periode)}</p>
+      <p class="subjudul">Rekapitulasi Iuran per Kantor Cabang — Periode ${esc(periodeLabel)}</p>
       <table>
         <thead><tr>
           <th style="width:34px">No</th><th>Kantor Cabang</th><th style="width:60px">Pegawai</th>
@@ -124,7 +128,7 @@ export function MenuPrint() {
       .join("");
     return `<div class="seksi">
       <p class="judul">Iuran BPJS Kesehatan 1%</p>
-      <p class="subjudul">Premi Anggota Keluarga Tambahan — Periode ${esc(periode)}</p>
+      <p class="subjudul">Premi Anggota Keluarga Tambahan — Periode ${esc(periodeLabel)}</p>
       <table>
         <thead><tr>
           <th>Nama Peserta</th><th style="width:110px">Hub Keluarga</th>
@@ -181,7 +185,7 @@ export function MenuPrint() {
       <p class="judul">Data Pegawai &amp; Iuran BPJS per Kantor Cabang</p>
       <p class="subjudul">${
         cabangFilter === SEMUA ? "Seluruh Kantor Cabang" : "Kantor Cabang: " + esc(cabangFilter)
-      } — Periode ${esc(periode)}</p>
+      } — Periode ${esc(periodeLabel)}</p>
       ${blok || '<p style="text-align:center;color:#94a3b8">Tidak ada data.</p>'}
       <table>
         <thead><tr><th>Jumlah Keseluruhan</th><th style="width:115px">BPJS Ketenagakerjaan</th>
@@ -222,7 +226,7 @@ export function MenuPrint() {
       <p class="judul">Database ${nama}</p>
       <p class="subjudul">${
         cabangFilter === SEMUA ? "Seluruh Kantor Cabang" : "Kantor Cabang: " + esc(cabangFilter)
-      } — Perbandingan Bulan Lalu &amp; Bulan Ini (${esc(periode)})</p>
+      } — Perbandingan Bulan Lalu &amp; Bulan Ini (${esc(periodeLabel)})</p>
       <table>
         <thead><tr>
           <th style="width:32px">No</th><th>Nama</th><th style="width:92px">NIPB</th>
@@ -364,13 +368,39 @@ export function MenuPrint() {
             Pengaturan Cetak
           </h3>
 
-          <div>
-            <label className="mb-1 block text-xs font-semibold text-slate-500">Periode</label>
-            <input
-              value={periode}
-              onChange={(e) => setPeriode(e.target.value)}
-              className={inputCls}
-            />
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div>
+              <label className="mb-1 block text-xs font-semibold text-slate-500">Bulan</label>
+              <select
+                value={periode.month}
+                onChange={(e) => setPeriode((prev) => ({ ...prev, month: Number(e.target.value) }))}
+                className={inputCls}
+              >
+                {Array.from({ length: 12 }, (_, index) => (
+                  <option key={index} value={index}>
+                    {new Date(2024, index, 1).toLocaleString("id-ID", { month: "long" })}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-semibold text-slate-500">Tahun</label>
+              <select
+                value={periode.year}
+                onChange={(e) => setPeriode((prev) => ({ ...prev, year: Number(e.target.value) }))}
+                className={inputCls}
+              >
+                {daftarPeriodeTersedia()
+                  .map((p) => p.tahun)
+                  .filter((year, index, arr) => arr.indexOf(year) === index)
+                  .sort((a, b) => a - b)
+                  .map((year) => (
+                    <option key={year} value={year}>
+                      {year}
+                    </option>
+                  ))}
+              </select>
+            </div>
           </div>
 
           <div>

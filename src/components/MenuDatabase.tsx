@@ -3,7 +3,7 @@ import { useData } from "../context/DataContext";
 import type { DatabasePeserta } from "../data/seed";
 import { Button, IconButton, Table, thClass, tdClass, tdNumClass } from "./ui";
 import { cn } from "../utils/cn";
-import { formatRupiah, toInt } from "../utils/format";
+import { bulanLabel, daftarPeriodeTersedia, formatRupiah, toInt } from "../utils/format";
 import { printElement } from "../utils/print";
 import { PrintHeader } from "./PrintHeader";
 import { PrintFooter } from "./PrintFooter";
@@ -30,6 +30,10 @@ export function MenuDatabase() {
   const [cari, setCari] = useState("");
   const [filterCabang, setFilterCabang] = useState<string>(SEMUA);
   const [isDirty, setIsDirty] = useState(false);
+  const [periode, setPeriode] = useState({
+    month: new Date().getMonth(),
+    year: new Date().getFullYear(),
+  });
 
   const active = tab === "tk" ? dbTK : dbKES;
   const setActive = tab === "tk" ? setDbTK : setDbKES;
@@ -58,6 +62,22 @@ export function MenuDatabase() {
     [tampil]
   );
 
+  const handlePeriodeChange = (month: number, year: number) => {
+    const next = { month, year };
+    setPeriode(next);
+    setActive((prev) =>
+      prev.map((d) => {
+        if (!d.tanggalInput) {
+          return { ...d, iuranBulanIni: d.jumlahBulanLalu };
+        }
+        const inputDate = new Date(d.tanggalInput);
+        const sameMonth =
+          inputDate.getMonth() === next.month && inputDate.getFullYear() === next.year;
+        return sameMonth ? d : { ...d, iuranBulanIni: d.jumlahBulanLalu };
+      })
+    );
+  };
+
   /** Ubah satu baris. Field umum ikut tersinkron ke database lainnya. */
   function ubah(
     row: DatabasePeserta,
@@ -78,6 +98,22 @@ export function MenuDatabase() {
       updatePegawai(
         row.key,
         tab === "tk" ? { tk: toInt(value as number) } : { kes: toInt(value as number) }
+      );
+      return;
+    }
+    if (field === "tanggalInput") {
+      const selected = String(value);
+      const nextValue = selected ? selected : "";
+      setActive((prev) =>
+        prev.map((d) =>
+          d.key === row.key
+            ? {
+                ...d,
+                tanggalInput: nextValue,
+                iuranBulanIni: nextValue ? d.iuranBulanIni : d.jumlahBulanLalu,
+              }
+            : d
+        )
       );
       return;
     }
@@ -231,6 +267,50 @@ export function MenuDatabase() {
         </p>
       </div>
 
+      <div className="grid gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm md:grid-cols-2 xl:grid-cols-4">
+        <div>
+          <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+            Bulan
+          </label>
+          <select
+            value={periode.month}
+            onChange={(e) => handlePeriodeChange(Number(e.target.value), periode.year)}
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+          >
+            {Array.from({ length: 12 }, (_, index) => (
+              <option key={index} value={index}>
+                {new Date(2024, index, 1).toLocaleString("id-ID", { month: "long" })}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+            Tahun
+          </label>
+          <select
+            value={periode.year}
+            onChange={(e) => handlePeriodeChange(periode.month, Number(e.target.value))}
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+          >
+            {daftarPeriodeTersedia()
+              .map((p) => p.tahun)
+              .filter((year, index, arr) => arr.indexOf(year) === index)
+              .sort((a, b) => a - b)
+              .map((year) => (
+                <option key={year} value={year}>
+                  {year}
+                </option>
+              ))}
+          </select>
+        </div>
+        <div className="flex items-end md:col-span-2 xl:col-span-2">
+          <div className="rounded-lg bg-slate-100 px-3 py-2 text-sm font-semibold text-slate-700">
+            Periode aktif: {bulanLabel(periode.month, periode.year)}
+          </div>
+        </div>
+      </div>
+
       {/* Tabs */}
       <div className="inline-flex rounded-xl border border-slate-200 bg-white p-1 shadow-sm">
         <button
@@ -301,6 +381,7 @@ export function MenuDatabase() {
               <th className={thClass + " text-right"}>Iuran Bulan Lalu</th>
               <th className={thClass}>Kantor Cabang</th>
               <th className={thClass}>Tanggal Lahir</th>
+              <th className={thClass}>Tanggal Input</th>
               <th className={thClass + " text-right"}>Iuran Bulan Ini</th>
               <th className={thClass + " text-right"}>Selisih</th>
               <th className={thClass + " text-center no-print"}>Aksi</th>
@@ -358,9 +439,19 @@ export function MenuDatabase() {
                   />
                 </td>
                 <td className={tdClass}>
+                  <input
+                    type="date"
+                    value={d.tanggalInput}
+                    onChange={(e) => ubah(d, "tanggalInput", e.target.value)}
+                    className="w-36 rounded-md border border-slate-200 px-2 py-1 focus:border-blue-400 focus:outline-none"
+                  />
+                </td>
+                <td className={tdClass}>
                   <RupiahInput
-                    value={toInt(d.iuranBulanIni)}
+                    value={toInt(d.tanggalInput ? d.iuranBulanIni : 0)}
                     onChange={(v) => ubah(d, "iuranBulanIni", v)}
+                    allowEmpty={!d.tanggalInput}
+                    placeholder={d.tanggalInput ? "" : "Kosong"}
                   />
                 </td>
                 <td className={tdNumClass}>
@@ -399,7 +490,7 @@ export function MenuDatabase() {
           )}
           {tampil.length > 0 && (
             <tr className="bg-blue-50 font-bold">
-              <td colSpan={3} className={tdClass + " font-bold text-slate-900"}>
+              <td colSpan={4} className={tdClass + " font-bold text-slate-900"}>
                 Jumlah Iuran
               </td>
               <td className={tdNumClass + " font-bold text-orange-700"}>
