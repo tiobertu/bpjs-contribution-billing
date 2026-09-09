@@ -1,10 +1,10 @@
 import { cn } from "../utils/cn";
 
 export const thClass =
-  "px-3 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wide text-blue-50 whitespace-nowrap";
-export const tdClass = "px-3 py-2 text-sm text-slate-700 whitespace-nowrap";
+  "px-3 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-200 whitespace-nowrap";
+export const tdClass = "px-3 py-2.5 text-sm text-slate-700 whitespace-nowrap align-middle";
 export const tdNumClass =
-  "px-3 py-2 text-sm text-slate-700 text-right tabular-nums whitespace-nowrap";
+  "px-3 py-2.5 text-sm text-slate-700 text-right tabular-nums whitespace-nowrap align-middle";
 
 export function Button({
   children,
@@ -23,12 +23,13 @@ export function Button({
 }) {
   const variants: Record<string, string> = {
     primary:
-      "bg-blue-600 text-white hover:bg-blue-700 shadow-sm shadow-blue-200",
+      "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-[0_10px_25px_rgba(37,99,235,0.25)] hover:from-blue-700 hover:to-indigo-700",
     secondary:
-      "bg-white text-slate-700 border border-slate-300 hover:bg-slate-50",
-    danger: "bg-red-500 text-white hover:bg-red-600 shadow-sm shadow-red-200",
+      "border border-slate-200 bg-white text-slate-700 shadow-sm hover:bg-slate-50",
+    danger:
+      "bg-gradient-to-r from-red-500 to-rose-600 text-white shadow-[0_10px_25px_rgba(239,68,68,0.25)] hover:from-red-600 hover:to-rose-700",
     success:
-      "bg-emerald-600 text-white hover:bg-emerald-700 shadow-sm shadow-emerald-200",
+      "bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-[0_10px_25px_rgba(16,185,129,0.25)] hover:from-emerald-600 hover:to-teal-700",
     ghost: "text-slate-600 hover:bg-slate-100",
   };
   return (
@@ -37,7 +38,7 @@ export function Button({
       title={title}
       onClick={onClick}
       className={cn(
-        "inline-flex items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-1 active:scale-[0.98]",
+        "inline-flex items-center justify-center gap-1.5 rounded-xl px-3.5 py-2.5 text-sm font-semibold transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-1 active:scale-[0.98]",
         variants[variant],
         className
       )}
@@ -91,16 +92,18 @@ export function Table({
   return (
     <div
       className={cn(
-        "overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm",
+        "overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_10px_30px_rgba(15,23,42,0.06)]",
         className
       )}
     >
-      <table className="w-full border-collapse text-left">
-        <thead className="bg-gradient-to-r from-blue-700 to-blue-600">
-          {head}
-        </thead>
-        <tbody className="divide-y divide-slate-100">{children}</tbody>
-      </table>
+      <div className="overflow-x-auto">
+        <table className="w-full border-collapse text-left">
+          <thead className="bg-slate-900">
+            {head}
+          </thead>
+          <tbody className="divide-y divide-slate-100 bg-white">{children}</tbody>
+        </table>
+      </div>
     </div>
   );
 }

@@ -25,25 +25,25 @@ export function Login({ onLogin }: { onLogin: (username: string, role: string) =
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-blue-900 via-blue-800 to-indigo-900 p-4">
+    <div className="flex min-h-screen items-center justify-center bg-[radial-gradient(circle_at_top,_rgba(96,165,250,0.35),_transparent_35%),linear-gradient(135deg,_#0f172a_0%,_#172554_30%,_#1d4ed8_100%)] p-4 sm:p-6">
       <div className="w-full max-w-md">
-        <div className="rounded-2xl bg-white p-8 shadow-2xl">
+        <div className="overflow-hidden rounded-[28px] border border-white/10 bg-white/95 p-5 shadow-[0_30px_80px_rgba(15,23,42,0.45)] backdrop-blur-sm sm:p-8">
           <div className="mb-6 text-center">
-            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-700 text-3xl shadow-lg shadow-blue-300">
+            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-700 text-3xl shadow-lg shadow-blue-300/70 ring-4 ring-blue-100">
               🏦
             </div>
-            <p className="text-xs font-semibold uppercase tracking-widest text-blue-600">
+            <p className="text-[10px] font-bold uppercase tracking-[0.28em] text-blue-600">
               Koperasi Simpan Pinjam Credit Union Bima
             </p>
-            <h1 className="mt-1 text-2xl font-bold tracking-tight text-slate-900">
+            <h1 className="mt-3 text-2xl font-black tracking-tight text-slate-900 sm:text-[2rem]">
               TAGIHAN IURAN BPJS
             </h1>
-            <p className="text-sm text-slate-500">KSP CU BIMA</p>
+            <p className="mt-1 text-sm text-slate-500">KSP CU BIMA</p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">
+              <label className="mb-1.5 block text-sm font-semibold text-slate-700">
                 Username
               </label>
               <input
@@ -52,11 +52,11 @@ export function Login({ onLogin }: { onLogin: (username: string, role: string) =
                 placeholder="Masukkan username"
                 required
                 autoFocus
-                className="w-full rounded-lg border border-slate-300 px-4 py-2.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-800 transition focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-blue-100"
               />
             </div>
             <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">
+              <label className="mb-1.5 block text-sm font-semibold text-slate-700">
                 Password
               </label>
               <div className="relative">
@@ -66,12 +66,12 @@ export function Login({ onLogin }: { onLogin: (username: string, role: string) =
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Masukkan password"
                   required
-                  className="w-full rounded-lg border border-slate-300 px-4 py-2.5 pr-11 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 pr-11 text-sm text-slate-800 transition focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-blue-100"
                 />
                 <button
                   type="button"
                   onClick={() => setShow(!show)}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 rounded-md p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
                   title={show ? "Sembunyikan" : "Tampilkan"}
                 >
                   {show ? "🙈" : "👁️"}
@@ -80,23 +80,29 @@ export function Login({ onLogin }: { onLogin: (username: string, role: string) =
             </div>
 
             {error && (
-              <div className="rounded-lg bg-red-50 px-4 py-2.5 text-sm font-medium text-red-600">
+              <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-600">
                 ⚠️ {error}
               </div>
             )}
 
             <button
               type="submit"
-              className="w-full rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 py-3 text-sm font-bold text-white shadow-lg shadow-blue-200 transition hover:from-blue-700 hover:to-indigo-700 active:scale-[0.99]"
+              className="w-full rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 py-3.5 text-sm font-bold text-white shadow-lg shadow-blue-200 transition hover:from-blue-700 hover:to-indigo-700 active:scale-[0.99]"
             >
               Masuk
             </button>
           </form>
 
-          <div className="mt-6 rounded-lg bg-slate-50 p-3 text-xs text-slate-500">
-            <p className="mb-1 font-semibold text-slate-600">Akun demo:</p>
-            <p>Admin: <code className="font-mono text-blue-600">admin</code> / <code className="font-mono text-blue-600">bima123</code></p>
-            <p>Bendahara: <code className="font-mono text-blue-600">bendahara</code> / <code className="font-mono text-blue-600">bima456</code></p>
+          <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-3.5 text-xs text-slate-600">
+            <p className="mb-2 font-bold text-slate-700">Akun demo:</p>
+            <div className="space-y-1.5">
+              <p>
+                Admin: <code className="rounded bg-blue-100 px-1.5 py-0.5 font-mono font-semibold text-blue-700">admin</code> / <code className="rounded bg-blue-100 px-1.5 py-0.5 font-mono font-semibold text-blue-700">bima123</code>
+              </p>
+              <p>
+                Bendahara: <code className="rounded bg-blue-100 px-1.5 py-0.5 font-mono font-semibold text-blue-700">bendahara</code> / <code className="rounded bg-blue-100 px-1.5 py-0.5 font-mono font-semibold text-blue-700">bima456</code>
+              </p>
+            </div>
           </div>
         </div>
       </div>
