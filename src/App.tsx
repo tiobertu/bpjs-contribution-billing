@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { MenuRekap } from "./components/MenuRekap";
 import { MenuKesehatan1 } from "./components/MenuKesehatan1";
 import { MenuCabang } from "./components/MenuCabang";
@@ -9,6 +9,7 @@ import { cn } from "./utils/cn";
 import { bulanIni, formatRupiah } from "./utils/format";
 import { STORAGE_KEYS } from "./data/seed";
 import { DataProvider, useData } from "./context/DataContext";
+import { defaultUsers, getUsers, isAdminRole, isKeuanganRole, saveUsers, type AppUser } from "./utils/auth";
 
 type Tab = "rekap" | "kesehatan" | "cabang" | "database" | "print";
 
@@ -20,11 +21,75 @@ const menu: { id: Tab; label: string; icon: string }[] = [
   { id: "print", label: "Print Out", icon: "🖨️" },
 ];
 
-function AppShell() {
+function AppShell({ username, role }: { username: string; role: string }) {
   const [tab, setTab] = useState<Tab>("rekap");
-  const [username, setUsername] = useState("");
-  const [role, setRole] = useState("");
+  const [adminUsers, setAdminUsers] = useState<AppUser[]>(() => getUsers());
+  const [newUser, setNewUser] = useState({ username: "", password: "", role: "Administrator" as "Administrator" | "Bagian Keuangan" });
+  const [editingUser, setEditingUser] = useState<string>("");
+  const [editingPassword, setEditingPassword] = useState("");
+  const [editingRole, setEditingRole] = useState<"Administrator" | "Bagian Keuangan">("Administrator");
   const { pegawai, totalTK, totalKES } = useData();
+
+  const isAdmin = isAdminRole(role);
+  const isKeuangan = isKeuanganRole(role);
+
+  const visibleMenu = useMemo(() => {
+    if (isKeuangan) {
+      return menu.filter((m) => m.id !== "database" && m.id !== "kesehatan");
+    }
+    return menu;
+  }, [isKeuangan]);
+
+  const saveAdminUsers = (next: AppUser[]) => {
+    setAdminUsers(next);
+    saveUsers(next);
+  };
+
+  const handleUserSave = () => {
+    if (!newUser.username.trim() || !newUser.password.trim()) {
+      alert("Username dan password tidak boleh kosong.");
+      return;
+    }
+    const next = [...adminUsers];
+    const current = next.find((u) => u.username.toLowerCase() === newUser.username.trim().toLowerCase());
+    if (current) {
+      current.password = newUser.password;
+      current.role = newUser.role;
+    } else {
+      next.push({
+        username: newUser.username.trim(),
+        password: newUser.password,
+        role: newUser.role,
+      });
+    }
+    saveAdminUsers(next);
+    setNewUser({ username: "", password: "", role: "Administrator" });
+  };
+
+  const handleUserEdit = () => {
+    if (!editingUser.trim() || !editingPassword.trim()) {
+      alert("Username dan password tidak boleh kosong.");
+      return;
+    }
+    const next = adminUsers.map((u) =>
+      u.username.toLowerCase() === editingUser.trim().toLowerCase()
+        ? { ...u, username: editingUser.trim(), password: editingPassword, role: editingRole }
+        : u
+    );
+    saveAdminUsers(next);
+    setEditingUser("");
+    setEditingPassword("");
+    setEditingRole("Administrator");
+  };
+
+  const deleteUser = (target: string) => {
+    if (target.toLowerCase() === "admin") {
+      alert("Akun admin utama tidak dapat dihapus.");
+      return;
+    }
+    const next = adminUsers.filter((u) => u.username.toLowerCase() !== target.toLowerCase());
+    saveAdminUsers(next);
+  };
 
   const kpiCards = [
     {
@@ -127,7 +192,7 @@ function AppShell() {
       <nav className="no-print sticky top-0 z-20 border-b border-slate-200 bg-white/85 shadow-[0_8px_24px_rgba(15,23,42,0.03)] backdrop-blur-xl">
         <div className="mx-auto max-w-7xl px-4 sm:px-6">
           <div className="flex gap-1 overflow-x-auto py-2">
-            {menu.map((m) => (
+            {visibleMenu.map((m) => (
               <button
                 key={m.id}
                 onClick={() => setTab(m.id)}
@@ -173,11 +238,92 @@ function AppShell() {
 
       {/* Konten */}
       <main className="mx-auto max-w-7xl px-4 pb-8 sm:px-6">
-        {tab === "rekap" && <MenuRekap />}
-        {tab === "kesehatan" && <MenuKesehatan1 />}
-        {tab === "cabang" && <MenuCabang />}
-        {tab === "database" && <MenuDatabase />}
-        {tab === "print" && <MenuPrint />}
+        {isKeuangan && tab === "print" && <MenuPrint />}
+        {isKeuangan && tab === "rekap" && <MenuRekap />}
+        {isKeuangan && tab === "cabang" && <MenuCabang />}
+        {isKeuangan && tab === "kesehatan" && <MenuKesehatan1 />}
+        {!isKeuangan && tab === "rekap" && <MenuRekap />}
+        {!isKeuangan && tab === "kesehatan" && <MenuKesehatan1 />}
+        {!isKeuangan && tab === "cabang" && <MenuCabang />}
+        {!isKeuangan && tab === "database" && <MenuDatabase />}
+        {!isKeuangan && tab === "print" && <MenuPrint />}
+
+        {isAdmin && (
+          <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <h3 className="mb-4 text-lg font-bold text-slate-900">Pengaturan Pengguna</h3>
+
+            <div className="grid gap-4 lg:grid-cols-4">
+              <input
+                value={newUser.username}
+                onChange={(e) => setNewUser({ ...newUser, username: e.target.value })}
+                placeholder="Username baru"
+                className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              />
+              <input
+                value={newUser.password}
+                onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
+                placeholder="Password"
+                className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              />
+              <select
+                value={newUser.role}
+                onChange={(e) => setNewUser({ ...newUser, role: e.target.value as "Administrator" | "Bagian Keuangan" })}
+                className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              >
+                <option value="Administrator">Administrator</option>
+                <option value="Bagian Keuangan">Bagian Keuangan</option>
+              </select>
+              <button
+                onClick={handleUserSave}
+                className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+              >
+                + Simpan User
+              </button>
+            </div>
+
+            <div className="mt-6 space-y-3">
+              {adminUsers.map((user) => (
+                <div key={user.username} className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3 md:flex-row md:items-center">
+                  <div className="min-w-[120px] font-semibold text-slate-700">{user.username}</div>
+                  <input
+                    value={editingUser.toLowerCase() === user.username.toLowerCase() ? editingPassword : user.password}
+                    onChange={(e) => {
+                      setEditingUser(user.username);
+                      setEditingPassword(e.target.value);
+                      setEditingRole(user.role);
+                    }}
+                    className="flex-1 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  />
+                  <select
+                    value={editingUser.toLowerCase() === user.username.toLowerCase() ? editingRole : user.role}
+                    onChange={(e) => {
+                      setEditingUser(user.username);
+                      setEditingRole(e.target.value as "Administrator" | "Bagian Keuangan");
+                    }}
+                    className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  >
+                    <option value="Administrator">Administrator</option>
+                    <option value="Bagian Keuangan">Bagian Keuangan</option>
+                  </select>
+                  <button
+                    onClick={handleUserEdit}
+                    className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-100"
+                  >
+                    Simpan
+                  </button>
+                  {user.username.toLowerCase() !== "admin" && (
+                    <button
+                      onClick={() => deleteUser(user.username)}
+                      className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm font-semibold text-red-700 hover:bg-red-100"
+                    >
+                      Hapus
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </main>
 
       <footer className="no-print border-t border-slate-200 bg-white/70 py-5 backdrop-blur-sm">
@@ -209,7 +355,7 @@ export default function App() {
 
   return (
     <DataProvider>
-      <AppShell />
+      <AppShell username={username} role={role} />
     </DataProvider>
   );
 }

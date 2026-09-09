@@ -1,19 +1,20 @@
-import { useState } from "react";
-
-const VALID_USERS = [
-  { username: "admin", password: "bima123", role: "Administrator" },
-  { username: "bendahara", password: "bima456", role: "Bendahara" },
-];
+import { useEffect, useState } from "react";
+import { defaultUsers, getUsers } from "../utils/auth";
 
 export function Login({ onLogin }: { onLogin: (username: string, role: string) => void }) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [show, setShow] = useState(false);
+  const [users, setUsers] = useState(defaultUsers);
+
+  useEffect(() => {
+    setUsers(getUsers());
+  }, []);
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const user = VALID_USERS.find(
+    const user = users.find(
       (u) => u.username === username.trim() && u.password === password
     );
     if (!user) {
@@ -100,7 +101,7 @@ export function Login({ onLogin }: { onLogin: (username: string, role: string) =
                 Admin: <code className="rounded bg-blue-100 px-1.5 py-0.5 font-mono font-semibold text-blue-700">admin</code> / <code className="rounded bg-blue-100 px-1.5 py-0.5 font-mono font-semibold text-blue-700">bima123</code>
               </p>
               <p>
-                Bendahara: <code className="rounded bg-blue-100 px-1.5 py-0.5 font-mono font-semibold text-blue-700">bendahara</code> / <code className="rounded bg-blue-100 px-1.5 py-0.5 font-mono font-semibold text-blue-700">bima456</code>
+                Bagian Keuangan: <code className="rounded bg-blue-100 px-1.5 py-0.5 font-mono font-semibold text-blue-700">keuangan</code> / <code className="rounded bg-blue-100 px-1.5 py-0.5 font-mono font-semibold text-blue-700">bima456</code>
               </p>
             </div>
           </div>
