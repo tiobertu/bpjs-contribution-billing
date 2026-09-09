@@ -36,7 +36,8 @@ export function MenuPrint() {
   const [periode, setPeriode] = useState(bulanIni());
   const [pakaiKop, setPakaiKop] = useState(true);
   const [pakaiTtd, setPakaiTtd] = useState(true);
-  const [penandatangan, setPenandatangan] = useState("Pimpinan KSP CU Bima");
+  const [dibuatOleh, setDibuatOleh] = useState("Administrasi KSP CU Bima");
+  const [diketahuiOleh, setDiketahuiOleh] = useState("Pimpinan KSP CU Bima");
 
   const terpilih = DAFTAR_LAPORAN.filter((l) => pilihan[l.id]);
 
@@ -63,12 +64,12 @@ export function MenuPrint() {
       <div class="kolom">
         <div>Dibuat oleh,</div><div class="ruang"></div>
         <div class="garis">(........................................)</div>
-        <div class="jabatan">Administrasi KSP CU Bima</div>
+        <div class="jabatan">${esc(dibuatOleh)}</div>
       </div>
       <div class="kolom">
-        <div>Mengetahui,</div><div class="ruang"></div>
+        <div>Diketahui oleh,</div><div class="ruang"></div>
         <div class="garis">(........................................)</div>
-        <div class="jabatan">${esc(penandatangan)}</div>
+        <div class="jabatan">${esc(diketahuiOleh)}</div>
       </div>
     </div>`;
   }
@@ -390,15 +391,34 @@ export function MenuPrint() {
             </select>
           </div>
 
-          <div>
-            <label className="mb-1 block text-xs font-semibold text-slate-500">
-              Nama / Jabatan Penandatangan
-            </label>
-            <input
-              value={penandatangan}
-              onChange={(e) => setPenandatangan(e.target.value)}
-              className={inputCls}
-            />
+          <div className="space-y-3 rounded-lg border border-slate-200 bg-slate-50 p-3">
+            <h4 className="text-xs font-bold uppercase tracking-wide text-slate-600">
+              Menu Tanda Tangan
+            </h4>
+
+            <div>
+              <label className="mb-1 block text-xs font-semibold text-slate-500">
+                Dibuat oleh
+              </label>
+              <input
+                value={dibuatOleh}
+                onChange={(e) => setDibuatOleh(e.target.value)}
+                className={inputCls}
+                placeholder="Administrasi KSP CU Bima"
+              />
+            </div>
+
+            <div>
+              <label className="mb-1 block text-xs font-semibold text-slate-500">
+                Diketahui oleh
+              </label>
+              <input
+                value={diketahuiOleh}
+                onChange={(e) => setDiketahuiOleh(e.target.value)}
+                className={inputCls}
+                placeholder="Pimpinan KSP CU Bima"
+              />
+            </div>
           </div>
 
           <label className="flex items-center gap-2 text-sm text-slate-700">

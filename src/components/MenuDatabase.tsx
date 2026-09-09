@@ -29,6 +29,7 @@ export function MenuDatabase() {
   const [tab, setTab] = useState<"tk" | "kes">("tk");
   const [cari, setCari] = useState("");
   const [filterCabang, setFilterCabang] = useState<string>(SEMUA);
+  const [isDirty, setIsDirty] = useState(false);
 
   const active = tab === "tk" ? dbTK : dbKES;
   const setActive = tab === "tk" ? setDbTK : setDbKES;
@@ -63,6 +64,8 @@ export function MenuDatabase() {
     field: keyof DatabasePeserta,
     value: string | number
   ) {
+    setIsDirty(true);
+
     if (field === "jumlahBulanLalu") {
       setActive(
         active.map((d) =>
@@ -174,7 +177,7 @@ export function MenuDatabase() {
               "Kantor Cabang": d.namaPegawai,
               "Tanggal Lahir": d.tanggalLahir,
               "Iuran Bulan Ini": toInt(d.iuranBulanIni),
-              Selisih: toInt(d.jumlahBulanLalu) - toInt(d.iuranBulanIni),
+              Selisih: toInt(d.iuranBulanIni) - toInt(d.jumlahBulanLalu),
             }))}
             filename={`database-${tab === "tk" ? "ketenagakerjaan" : "kesehatan"}.xlsx`}
             sheetName={label}
@@ -305,7 +308,7 @@ export function MenuDatabase() {
           }
         >
           {tampil.map((d, i) => {
-            const selisih = toInt(d.jumlahBulanLalu) - toInt(d.iuranBulanIni);
+            const selisih = toInt(d.iuranBulanIni) - toInt(d.jumlahBulanLalu);
             const status = selisih > 0 ? "naik" : selisih < 0 ? "turun" : "sama";
             return (
               <tr key={d.key} className="hover:bg-slate-50">
@@ -407,12 +410,26 @@ export function MenuDatabase() {
                 {formatRupiah(totalBulanIni)}
               </td>
               <td className={tdNumClass + " font-bold text-blue-800"}>
-                {formatRupiah(totalBulanLalu - totalBulanIni)}
+                {formatRupiah(totalBulanIni - totalBulanLalu)}
               </td>
               <td className={tdClass + " no-print"}></td>
             </tr>
           )}
         </Table>
+
+        {isDirty && (
+          <div className="mt-4 flex justify-end">
+            <Button
+              variant="success"
+              onClick={() => {
+                setIsDirty(false);
+                alert("Database berhasil disimpan.");
+              }}
+            >
+              💾 Simpan Perubahan
+            </Button>
+          </div>
+        )}
 
         {/* Ringkasan perbandingan */}
         <div className="mt-4 grid gap-3 sm:grid-cols-3">
@@ -441,10 +458,10 @@ export function MenuDatabase() {
           </div>
           <div className="rounded-xl bg-slate-800 p-4 text-white shadow">
             <p className="text-xs font-medium uppercase tracking-wide text-slate-300">
-              Selisih (Bulan Lalu − Bulan Ini)
+              Selisih (Bulan Ini − Bulan Lalu)
             </p>
             <p className="mt-1 text-xl font-bold tabular-nums">
-              {formatRupiah(totalBulanLalu - totalBulanIni)}
+              {formatRupiah(totalBulanIni - totalBulanLalu)}
             </p>
           </div>
         </div>
