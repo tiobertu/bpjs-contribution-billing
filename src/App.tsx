@@ -9,7 +9,15 @@ import { cn } from "./utils/cn";
 import { bulanIni, formatRupiah } from "./utils/format";
 import { STORAGE_KEYS } from "./data/seed";
 import { DataProvider, useData } from "./context/DataContext";
-import { defaultUsers, getUsers, isAdminRole, isKeuanganRole, saveUsers, type AppUser } from "./utils/auth";
+import {
+  AUTH_STORAGE_KEY,
+  defaultUsers,
+  getUsers,
+  isAdminRole,
+  isKeuanganRole,
+  saveUsers,
+  type AppUser,
+} from "./utils/auth";
 
 type Tab = "rekap" | "kesehatan" | "cabang" | "database" | "print";
 
@@ -29,6 +37,31 @@ function AppShell({ username, role }: { username: string; role: string }) {
   const [editingPassword, setEditingPassword] = useState("");
   const [editingRole, setEditingRole] = useState<"Administrator" | "Bagian Keuangan">("Administrator");
   const { pegawai, totalTK, totalKES } = useData();
+
+  const handleBackupData = () => {
+    const keys = Array.from(
+      new Set([...Object.values(STORAGE_KEYS), AUTH_STORAGE_KEY])
+    );
+    const snapshot = Object.fromEntries(
+      keys.map((key) => [key, localStorage.getItem(key)])
+    );
+    const payload = {
+      exportedAt: new Date().toISOString(),
+      app: "KSP CU BIMA BPJS",
+      data: snapshot,
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], {
+      type: "application/json",
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `bpjs-backup-${new Date().toISOString().slice(0, 16).replace(/[:T]/g, "-")}.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  };
 
   const isAdmin = isAdminRole(role);
   const isKeuangan = isKeuanganRole(role);
@@ -159,24 +192,6 @@ function AppShell({ username, role }: { username: string; role: string }) {
                 </div>
               </div>
               <button
-                onClick={() => {
-                  if (
-                    window.confirm(
-                      "Kembalikan seluruh data ke data awal (172 pegawai)?\nSemua perubahan pada Database, Rekap, Cabang, dan Kesehatan 1% akan hilang."
-                    )
-                  ) {
-                    Object.values(STORAGE_KEYS).forEach((k) =>
-                      localStorage.removeItem(k)
-                    );
-                    window.location.reload();
-                  }
-                }}
-                className="rounded-xl border border-amber-400/30 bg-amber-400/10 px-3 py-2 text-sm font-semibold text-amber-100 transition hover:bg-amber-500/20"
-                title="Kembalikan ke data awal"
-              >
-                🔄 Reset
-              </button>
-              <button
                 onClick={() => setUsername("") || setRole("") || window.location.reload()}
                 className="rounded-xl border border-red-400/30 bg-red-500/10 px-3 py-2 text-sm font-semibold text-red-100 transition hover:bg-red-500/20"
                 title="Keluar"
@@ -249,10 +264,24 @@ function AppShell({ username, role }: { username: string; role: string }) {
         {!isKeuangan && tab === "print" && <MenuPrint />}
 
         {isAdmin && (
-          <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-            <h3 className="mb-4 text-lg font-bold text-slate-900">Pengaturan Pengguna</h3>
+          <div className="mt-6 space-y-6">
+            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+              <h3 className="mb-3 text-lg font-bold text-slate-900">Backup Data</h3>
+              <p className="mb-4 text-sm text-slate-500">
+                Unduh salinan data aplikasi untuk cadangan database dan data pengguna.
+              </p>
+              <button
+                onClick={handleBackupData}
+                className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
+              >
+                💾 Backup Data
+              </button>
+            </div>
 
-            <div className="grid gap-4 lg:grid-cols-4">
+            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+              <h3 className="mb-4 text-lg font-bold text-slate-900">Pengaturan Pengguna</h3>
+
+              <div className="grid gap-4 lg:grid-cols-4">
               <input
                 value={newUser.username}
                 onChange={(e) => setNewUser({ ...newUser, username: e.target.value })}
@@ -281,46 +310,47 @@ function AppShell({ username, role }: { username: string; role: string }) {
               </button>
             </div>
 
-            <div className="mt-6 space-y-3">
-              {adminUsers.map((user) => (
-                <div key={user.username} className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3 md:flex-row md:items-center">
-                  <div className="min-w-[120px] font-semibold text-slate-700">{user.username}</div>
-                  <input
-                    value={editingUser.toLowerCase() === user.username.toLowerCase() ? editingPassword : user.password}
-                    onChange={(e) => {
-                      setEditingUser(user.username);
-                      setEditingPassword(e.target.value);
-                      setEditingRole(user.role);
-                    }}
-                    className="flex-1 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                  />
-                  <select
-                    value={editingUser.toLowerCase() === user.username.toLowerCase() ? editingRole : user.role}
-                    onChange={(e) => {
-                      setEditingUser(user.username);
-                      setEditingRole(e.target.value as "Administrator" | "Bagian Keuangan");
-                    }}
-                    className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                  >
-                    <option value="Administrator">Administrator</option>
-                    <option value="Bagian Keuangan">Bagian Keuangan</option>
-                  </select>
-                  <button
-                    onClick={handleUserEdit}
-                    className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-100"
-                  >
-                    Simpan
-                  </button>
-                  {user.username.toLowerCase() !== "admin" && (
-                    <button
-                      onClick={() => deleteUser(user.username)}
-                      className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm font-semibold text-red-700 hover:bg-red-100"
+              <div className="mt-6 space-y-3">
+                {adminUsers.map((user) => (
+                  <div key={user.username} className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3 md:flex-row md:items-center">
+                    <div className="min-w-[120px] font-semibold text-slate-700">{user.username}</div>
+                    <input
+                      value={editingUser.toLowerCase() === user.username.toLowerCase() ? editingPassword : user.password}
+                      onChange={(e) => {
+                        setEditingUser(user.username);
+                        setEditingPassword(e.target.value);
+                        setEditingRole(user.role);
+                      }}
+                      className="flex-1 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    />
+                    <select
+                      value={editingUser.toLowerCase() === user.username.toLowerCase() ? editingRole : user.role}
+                      onChange={(e) => {
+                        setEditingUser(user.username);
+                        setEditingRole(e.target.value as "Administrator" | "Bagian Keuangan");
+                      }}
+                      className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                     >
-                      Hapus
+                      <option value="Administrator">Administrator</option>
+                      <option value="Bagian Keuangan">Bagian Keuangan</option>
+                    </select>
+                    <button
+                      onClick={handleUserEdit}
+                      className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-100"
+                    >
+                      Simpan
                     </button>
-                  )}
-                </div>
-              ))}
+                    {user.username.toLowerCase() !== "admin" && (
+                      <button
+                        onClick={() => deleteUser(user.username)}
+                        className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm font-semibold text-red-700 hover:bg-red-100"
+                      >
+                        Hapus
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         )}
