@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { MenuRekap } from "./components/MenuRekap";
 import { MenuKesehatan1 } from "./components/MenuKesehatan1";
 import { MenuCabang } from "./components/MenuCabang";
@@ -21,6 +21,8 @@ import {
 
 type Tab = "rekap" | "kesehatan" | "cabang" | "database" | "print";
 
+const SESSION_KEY = "bpjs_login_session_v1";
+
 const menu: { id: Tab; label: string; icon: string }[] = [
   { id: "rekap", label: "Rekap Peserta BPJS", icon: "📊" },
   { id: "kesehatan", label: "BPJS Kesehatan 1%", icon: "💚" },
@@ -29,13 +31,14 @@ const menu: { id: Tab; label: string; icon: string }[] = [
   { id: "print", label: "Print Out", icon: "🖨️" },
 ];
 
-function AppShell({ username, role }: { username: string; role: string }) {
+function AppShell({ username, role, onLogout }: { username: string; role: string; onLogout: () => void }) {
   const [tab, setTab] = useState<Tab>("rekap");
   const [adminUsers, setAdminUsers] = useState<AppUser[]>(() => getUsers());
   const [newUser, setNewUser] = useState({ username: "", password: "", role: "Administrator" as "Administrator" | "Bagian Keuangan" });
   const [editingUser, setEditingUser] = useState<string>("");
   const [editingPassword, setEditingPassword] = useState("");
   const [editingRole, setEditingRole] = useState<"Administrator" | "Bagian Keuangan">("Administrator");
+  const restoreInputRef = useRef<HTMLInputElement | null>(null);
   const { pegawai, totalTK, totalKES } = useData();
 
   const handleBackupData = () => {
@@ -61,6 +64,59 @@ function AppShell({ username, role }: { username: string; role: string }) {
     a.click();
     a.remove();
     URL.revokeObjectURL(url);
+    alert("Backup data berhasil dibuat. Anda dapat memulihkan file backup kapan saja.");
+  };
+
+  const handleRestoreData = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const text = await file.text();
+      const parsed = JSON.parse(text) as { data?: Record<string, string | null> };
+      if (!parsed?.data || typeof parsed.data !== "object") {
+        throw new Error("Format backup tidak valid.");
+      }
+
+      const confirmed = window.confirm(
+        "Restore data akan mengganti data aplikasi yang tersimpan saat ini. Lanjutkan?"
+      );
+      if (!confirmed) {
+        event.target.value = "";
+        return;
+      }
+
+      Object.entries(parsed.data).forEach(([key, value]) => {
+        if (value === null || value === undefined) {
+          localStorage.removeItem(key);
+          return;
+        }
+        localStorage.setItem(key, value);
+      });
+
+      const authValue = parsed.data[AUTH_STORAGE_KEY];
+      if (authValue) {
+        try {
+          const authUsers = JSON.parse(authValue) as AppUser[];
+          if (Array.isArray(authUsers)) {
+            saveAdminUsers(authUsers);
+          }
+        } catch {
+          // ignore invalid auth payload
+        }
+      }
+
+      event.target.value = "";
+      alert("Restore data berhasil. Halaman akan dimuat ulang untuk menerapkan data baru.");
+      window.location.reload();
+    } catch (error) {
+      event.target.value = "";
+      alert(
+        error instanceof Error
+          ? `Restore gagal: ${error.message}`
+          : "Restore gagal. Pastikan file backup yang dipilih valid."
+      );
+    }
   };
 
   const isAdmin = isAdminRole(role);
@@ -179,6 +235,31 @@ function AppShell({ username, role }: { username: string; role: string }) {
             </div>
 
             <div className="flex flex-wrap items-center gap-2.5 lg:justify-end">
+              {isAdmin && (
+                <>
+                  <button
+                    onClick={handleBackupData}
+                    className="rounded-xl border border-emerald-400/30 bg-emerald-500/10 px-3 py-2 text-sm font-semibold text-emerald-100 transition hover:bg-emerald-500/20"
+                    title="Backup data aplikasi"
+                  >
+                    💾 Backup
+                  </button>
+                  <button
+                    onClick={() => restoreInputRef.current?.click()}
+                    className="rounded-xl border border-blue-400/30 bg-blue-500/10 px-3 py-2 text-sm font-semibold text-blue-100 transition hover:bg-blue-500/20"
+                    title="Restore data dari file backup"
+                  >
+                    ♻ Restore
+                  </button>
+                  <input
+                    ref={restoreInputRef}
+                    type="file"
+                    accept=".json,application/json"
+                    className="hidden"
+                    onChange={handleRestoreData}
+                  />
+                </>
+              )}
               <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm font-medium text-slate-100 backdrop-blur-sm">
                 Periode: <span className="font-bold text-white">{bulanIni()}</span>
               </div>
@@ -192,7 +273,10 @@ function AppShell({ username, role }: { username: string; role: string }) {
                 </div>
               </div>
               <button
-                onClick={() => setUsername("") || setRole("") || window.location.reload()}
+                onClick={() => {
+                  onLogout();
+                  window.location.reload();
+                }}
                 className="rounded-xl border border-red-400/30 bg-red-500/10 px-3 py-2 text-sm font-semibold text-red-100 transition hover:bg-red-500/20"
                 title="Keluar"
               >
@@ -266,16 +350,31 @@ function AppShell({ username, role }: { username: string; role: string }) {
         {isAdmin && (
           <div className="mt-6 space-y-6">
             <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-              <h3 className="mb-3 text-lg font-bold text-slate-900">Backup Data</h3>
+              <h3 className="mb-3 text-lg font-bold text-slate-900">Backup & Restore Data</h3>
               <p className="mb-4 text-sm text-slate-500">
-                Unduh salinan data aplikasi untuk cadangan database dan data pengguna.
+                Simpan salinan data aplikasi untuk cadangan, lalu restore saat dibutuhkan tanpa kehilangan database.
               </p>
-              <button
-                onClick={handleBackupData}
-                className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
-              >
-                💾 Backup Data
-              </button>
+              <div className="flex flex-wrap gap-3">
+                <button
+                  onClick={handleBackupData}
+                  className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
+                >
+                  💾 Backup Data
+                </button>
+                <button
+                  onClick={() => restoreInputRef.current?.click()}
+                  className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-100"
+                >
+                  ♻ Restore Data
+                </button>
+                <input
+                  ref={restoreInputRef}
+                  type="file"
+                  accept=".json,application/json"
+                  className="hidden"
+                  onChange={handleRestoreData}
+                />
+              </div>
             </div>
 
             <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -367,17 +466,41 @@ function AppShell({ username, role }: { username: string; role: string }) {
 }
 
 export default function App() {
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [username, setUsername] = useState("");
-  const [role, setRole] = useState("");
+  const getStoredSession = () => {
+    try {
+      const raw = localStorage.getItem(SESSION_KEY);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw) as { username?: string; role?: string };
+      if (!parsed.username || !parsed.role) return null;
+      return { username: parsed.username, role: parsed.role };
+    } catch {
+      return null;
+    }
+  };
+
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(() => !!getStoredSession());
+  const [username, setUsername] = useState<string>(() => getStoredSession()?.username ?? "");
+  const [role, setRole] = useState<string>(() => getStoredSession()?.role ?? "");
+
+  const handleLogout = () => {
+    setUsername("");
+    setRole("");
+    setIsLoggedIn(false);
+    localStorage.removeItem(SESSION_KEY);
+  };
+
+  const handleLogin = (u: string, r: string) => {
+    setUsername(u);
+    setRole(r);
+    setIsLoggedIn(true);
+    localStorage.setItem(SESSION_KEY, JSON.stringify({ username: u, role: r }));
+  };
 
   if (!isLoggedIn) {
     return (
       <Login
         onLogin={(u, r) => {
-          setUsername(u);
-          setRole(r);
-          setIsLoggedIn(true);
+          handleLogin(u, r);
         }}
       />
     );
@@ -385,7 +508,7 @@ export default function App() {
 
   return (
     <DataProvider>
-      <AppShell username={username} role={role} />
+      <AppShell username={username} role={role} onLogout={handleLogout} />
     </DataProvider>
   );
 }
