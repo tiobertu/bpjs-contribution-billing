@@ -12,7 +12,7 @@ import { RupiahInput } from "./RupiahInput";
 
 const SEMUA = "__SEMUA__";
 
-export function MenuCabang() {
+export function MenuCabang({ readOnly = false }: { readOnly?: boolean }) {
   const {
     daftarCabang,
     pegawai,
@@ -59,105 +59,107 @@ export function MenuCabang() {
             Rincian iuran BPJS per pegawai — tersinkron dengan menu Database
           </p>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <ImportExport
-            data={listTampil.map((p, i) => ({
-              No: i + 1,
-              "Nama Pegawai": p.nama,
-              NIPB: p.nipb,
-              "Kantor Cabang": p.cabang,
-              "Tanggal Lahir": p.tanggalLahir,
-              "BPJS Ketenagakerjaan": p.tk,
-              "BPJS Kesehatan": p.kes,
-              Jumlah: p.tk + p.kes,
-            }))}
-            filename="data-pegawai-cabang.xlsx"
-            sheetName="Pegawai"
-            headers={{
-              "Nama Pegawai": "nama",
-              Nama: "nama",
-              NIPB: "nipb",
-              "Kantor Cabang": "cabang",
-              Cabang: "cabang",
-              "Tanggal Lahir": "tanggalLahir",
-              "BPJS Ketenagakerjaan": "tk",
-              "BPJS Kesehatan": "kes",
-            }}
-            templateHeaders={[
-              "Nama Pegawai",
-              "NIPB",
-              "Kantor Cabang",
-              "Tanggal Lahir",
-              "BPJS Ketenagakerjaan",
-              "BPJS Kesehatan",
-            ]}
-            templateContoh={[
-              {
-                "Nama Pegawai": "CONTOH NAMA",
-                NIPB: "001 01 01 01",
-                "Kantor Cabang": daftarCabang[0] ?? "Kantor Pusat",
-                "Tanggal Lahir": "1990-01-31",
-                "BPJS Ketenagakerjaan": 400000,
-                "BPJS Kesehatan": 200000,
-              },
-            ]}
-            keterangan="Kolom yang tidak diisi pada file Excel tidak akan mengubah data lama."
-            onImport={(rows, mode) => {
-              const mapped: Partial<PegawaiGabungan>[] = rows
-                .filter((r) => String(r.nama ?? "").trim())
-                .map((o) => {
-                  const item: Partial<PegawaiGabungan> = {
-                    nama: String(o.nama ?? "").trim(),
-                    nipb: String(o.nipb ?? "").trim(),
-                  };
-                  if (o.cabang !== undefined && o.cabang !== "")
-                    item.cabang = String(o.cabang).trim();
-                  if (o.tanggalLahir !== undefined && o.tanggalLahir !== "")
-                    item.tanggalLahir = excelToISODate(o.tanggalLahir);
-                  if (o.tk !== undefined && o.tk !== "") item.tk = toInt(o.tk as number);
-                  if (o.kes !== undefined && o.kes !== "")
-                    item.kes = toInt(o.kes as number);
-                  return item;
-                });
-              if (mapped.length === 0) {
-                alert("Tidak ada baris valid. Pastikan kolom 'Nama Pegawai' terisi.");
-                return;
+        {!readOnly && (
+          <div className="flex flex-wrap gap-2">
+            <ImportExport
+              data={listTampil.map((p, i) => ({
+                No: i + 1,
+                "Nama Pegawai": p.nama,
+                NIPB: p.nipb,
+                "Kantor Cabang": p.cabang,
+                "Tanggal Lahir": p.tanggalLahir,
+                "BPJS Ketenagakerjaan": p.tk,
+                "BPJS Kesehatan": p.kes,
+                Jumlah: p.tk + p.kes,
+              }))}
+              filename="data-pegawai-cabang.xlsx"
+              sheetName="Pegawai"
+              headers={{
+                "Nama Pegawai": "nama",
+                Nama: "nama",
+                NIPB: "nipb",
+                "Kantor Cabang": "cabang",
+                Cabang: "cabang",
+                "Tanggal Lahir": "tanggalLahir",
+                "BPJS Ketenagakerjaan": "tk",
+                "BPJS Kesehatan": "kes",
+              }}
+              templateHeaders={[
+                "Nama Pegawai",
+                "NIPB",
+                "Kantor Cabang",
+                "Tanggal Lahir",
+                "BPJS Ketenagakerjaan",
+                "BPJS Kesehatan",
+              ]}
+              templateContoh={[
+                {
+                  "Nama Pegawai": "CONTOH NAMA",
+                  NIPB: "001 01 01 01",
+                  "Kantor Cabang": daftarCabang[0] ?? "Kantor Pusat",
+                  "Tanggal Lahir": "1990-01-31",
+                  "BPJS Ketenagakerjaan": 400000,
+                  "BPJS Kesehatan": 200000,
+                },
+              ]}
+              keterangan="Kolom yang tidak diisi pada file Excel tidak akan mengubah data lama."
+              onImport={(rows, mode) => {
+                const mapped: Partial<PegawaiGabungan>[] = rows
+                  .filter((r) => String(r.nama ?? "").trim())
+                  .map((o) => {
+                    const item: Partial<PegawaiGabungan> = {
+                      nama: String(o.nama ?? "").trim(),
+                      nipb: String(o.nipb ?? "").trim(),
+                    };
+                    if (o.cabang !== undefined && o.cabang !== "")
+                      item.cabang = String(o.cabang).trim();
+                    if (o.tanggalLahir !== undefined && o.tanggalLahir !== "")
+                      item.tanggalLahir = excelToISODate(o.tanggalLahir);
+                    if (o.tk !== undefined && o.tk !== "") item.tk = toInt(o.tk as number);
+                    if (o.kes !== undefined && o.kes !== "")
+                      item.kes = toInt(o.kes as number);
+                    return item;
+                  });
+                if (mapped.length === 0) {
+                  alert("Tidak ada baris valid. Pastikan kolom 'Nama Pegawai' terisi.");
+                  return;
+                }
+                const h = upsertPegawai(mapped, mode);
+                alert(
+                  `Import selesai.\n• Diperbarui: ${h.diperbarui}\n• Ditambahkan: ${h.ditambah}` +
+                    (h.dihapus ? `\n• Dihapus: ${h.dihapus}` : "")
+                );
+              }}
+            />
+            <Button
+              variant="secondary"
+              onClick={() =>
+                exportMultiSheetExcel(
+                  daftarCabang.map((nama) => ({
+                    name: nama.replace(/[\\/*?:[\]]/g, "").slice(0, 30),
+                    data: pegawai
+                      .filter((p) => p.cabang === nama)
+                      .map((p, i) => ({
+                        No: i + 1,
+                        "Nama Pegawai": p.nama,
+                        NIPB: p.nipb,
+                        "BPJS Ketenagakerjaan": p.tk,
+                        "BPJS Kesehatan": p.kes,
+                        Jumlah: p.tk + p.kes,
+                      })),
+                  })),
+                  "data-pegawai-per-cabang.xlsx"
+                )
               }
-              const h = upsertPegawai(mapped, mode);
-              alert(
-                `Import selesai.\n• Diperbarui: ${h.diperbarui}\n• Ditambahkan: ${h.ditambah}` +
-                  (h.dihapus ? `\n• Dihapus: ${h.dihapus}` : "")
-              );
-            }}
-          />
-          <Button
-            variant="secondary"
-            onClick={() =>
-              exportMultiSheetExcel(
-                daftarCabang.map((nama) => ({
-                  name: nama.replace(/[\\/*?:[\]]/g, "").slice(0, 30),
-                  data: pegawai
-                    .filter((p) => p.cabang === nama)
-                    .map((p, i) => ({
-                      No: i + 1,
-                      "Nama Pegawai": p.nama,
-                      NIPB: p.nipb,
-                      "BPJS Ketenagakerjaan": p.tk,
-                      "BPJS Kesehatan": p.kes,
-                      Jumlah: p.tk + p.kes,
-                    })),
-                })),
-                "data-pegawai-per-cabang.xlsx"
-              )
-            }
-            title="Export semua cabang (multi-sheet)"
-          >
-            📚 Export per Cabang
-          </Button>
-          <Button onClick={() => printElement("print-cabang")}>
-            <span className="inline-block">🖨️</span> Cetak
-          </Button>
-        </div>
+              title="Export semua cabang (multi-sheet)"
+            >
+              📚 Export per Cabang
+            </Button>
+            <Button onClick={() => printElement("print-cabang")}>
+              <span className="inline-block">🖨️</span> Cetak
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* Pemilih cabang + pencarian */}
@@ -191,7 +193,7 @@ export function MenuCabang() {
               className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
             />
           </div>
-          {pilih !== SEMUA && (
+          {!readOnly && pilih !== SEMUA && (
             <Button variant="success" onClick={() => tambahPegawai(pilih)}>
               + Tambah Pegawai
             </Button>
@@ -224,7 +226,7 @@ export function MenuCabang() {
                       {list.length} pegawai
                     </span>
                   </h3>
-                  {pilih === SEMUA && (
+                  {!readOnly && pilih === SEMUA && (
                     <Button
                       variant="secondary"
                       className="!px-2.5 !py-1.5 text-xs no-print"
@@ -244,7 +246,7 @@ export function MenuCabang() {
                       <th className={thClass + " text-right"}>BPJS Ketenagakerjaan</th>
                       <th className={thClass + " text-right"}>BPJS Kesehatan</th>
                       <th className={thClass + " text-right"}>Jumlah (TK + KES)</th>
-                      <th className={thClass + " text-center no-print"}>Aksi</th>
+                      {!readOnly && <th className={thClass + " text-center no-print"}>Aksi</th>}
                     </tr>
                   }
                 >
@@ -252,45 +254,63 @@ export function MenuCabang() {
                     <tr key={p.key} className="hover:bg-slate-50">
                       <td className={tdClass}>{i + 1}</td>
                       <td className={tdClass}>
-                        <input
-                          value={p.nama}
-                          onChange={(e) => updatePegawai(p.key, { nama: e.target.value })}
-                          placeholder="Nama pegawai"
-                          className="w-44 rounded-md border border-transparent bg-transparent px-2 py-1 font-medium text-slate-800 placeholder:text-slate-300 hover:border-slate-200 focus:border-blue-400 focus:bg-white focus:outline-none"
-                        />
+                        {readOnly ? (
+                          <span className="font-medium text-slate-800">{p.nama}</span>
+                        ) : (
+                          <input
+                            value={p.nama}
+                            onChange={(e) => updatePegawai(p.key, { nama: e.target.value })}
+                            placeholder="Nama pegawai"
+                            className="w-44 rounded-md border border-transparent bg-transparent px-2 py-1 font-medium text-slate-800 placeholder:text-slate-300 hover:border-slate-200 focus:border-blue-400 focus:bg-white focus:outline-none"
+                          />
+                        )}
                       </td>
                       <td className={tdClass}>
-                        <input
-                          value={p.nipb}
-                          onChange={(e) => updatePegawai(p.key, { nipb: e.target.value })}
-                          placeholder="NIPB"
-                          className="w-28 rounded-md border border-slate-200 px-2 py-1 focus:border-blue-400 focus:outline-none"
-                        />
+                        {readOnly ? (
+                          <span className="text-slate-700">{p.nipb}</span>
+                        ) : (
+                          <input
+                            value={p.nipb}
+                            onChange={(e) => updatePegawai(p.key, { nipb: e.target.value })}
+                            placeholder="NIPB"
+                            className="w-28 rounded-md border border-slate-200 px-2 py-1 focus:border-blue-400 focus:outline-none"
+                          />
+                        )}
                       </td>
                       <td className={tdClass}>
-                        <RupiahInput
-                          value={p.tk}
-                          onChange={(v) => updatePegawai(p.key, { tk: v })}
-                        />
+                        {readOnly ? (
+                          <span className="font-medium text-slate-700">{formatRupiah(p.tk)}</span>
+                        ) : (
+                          <RupiahInput
+                            value={p.tk}
+                            onChange={(v) => updatePegawai(p.key, { tk: v })}
+                          />
+                        )}
                       </td>
                       <td className={tdClass}>
-                        <RupiahInput
-                          value={p.kes}
-                          onChange={(v) => updatePegawai(p.key, { kes: v })}
-                        />
+                        {readOnly ? (
+                          <span className="font-medium text-slate-700">{formatRupiah(p.kes)}</span>
+                        ) : (
+                          <RupiahInput
+                            value={p.kes}
+                            onChange={(v) => updatePegawai(p.key, { kes: v })}
+                          />
+                        )}
                       </td>
                       <td className={tdNumClass + " font-semibold text-blue-700"}>
                         {formatRupiah(p.tk + p.kes)}
                       </td>
-                      <td className={tdClass + " text-center no-print"}>
-                        <IconButton
-                          variant="danger"
-                          title="Hapus pegawai"
-                          onClick={() => hapusPegawai(p.key)}
-                        >
-                          ✕
-                        </IconButton>
-                      </td>
+                      {!readOnly && (
+                        <td className={tdClass + " text-center no-print"}>
+                          <IconButton
+                            variant="danger"
+                            title="Hapus pegawai"
+                            onClick={() => hapusPegawai(p.key)}
+                          >
+                            ✕
+                          </IconButton>
+                        </td>
+                      )}
                     </tr>
                   ))}
                   {list.length === 0 && (
@@ -314,7 +334,7 @@ export function MenuCabang() {
                       <td className={tdNumClass + " font-bold text-blue-800"}>
                         {formatRupiah(subTK + subKES)}
                       </td>
-                      <td className={tdClass + " no-print"}></td>
+                      {!readOnly && <td className={tdClass + " no-print"}></td>}
                     </tr>
                   )}
                 </Table>

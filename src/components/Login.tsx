@@ -28,7 +28,7 @@ export function Login({ onLogin }: { onLogin: (username: string, role: string) =
   return (
     <div className="flex min-h-screen items-center justify-center bg-[radial-gradient(circle_at_top,_rgba(96,165,250,0.35),_transparent_35%),linear-gradient(135deg,_#0f172a_0%,_#172554_30%,_#1d4ed8_100%)] p-4 sm:p-6">
       <div className="w-full max-w-md">
-        <div className="overflow-hidden rounded-[28px] border border-white/10 bg-white/95 p-5 shadow-[0_30px_80px_rgba(15,23,42,0.45)] backdrop-blur-sm sm:p-8">
+        <div className="overflow-hidden rounded-[24px] border border-white/10 bg-white/95 p-4 shadow-[0_30px_80px_rgba(15,23,42,0.45)] backdrop-blur-sm sm:p-8 sm:rounded-[28px]">
           <div className="mb-6 text-center">
             <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-700 text-3xl shadow-lg shadow-blue-300/70 ring-4 ring-blue-100">
               🏦
@@ -74,6 +74,7 @@ export function Login({ onLogin }: { onLogin: (username: string, role: string) =
                   onClick={() => setShow(!show)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 rounded-md p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
                   title={show ? "Sembunyikan" : "Tampilkan"}
+                  aria-label={show ? "Sembunyikan password" : "Tampilkan password"}
                 >
                   {show ? "🙈" : "👁️"}
                 </button>

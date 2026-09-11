@@ -54,6 +54,16 @@ function AppShell({
   const [showAllUsers, setShowAllUsers] = useState(false);
   const [selectedRoleFilter, setSelectedRoleFilter] = useState<"all" | "Administrator" | "Bagian Keuangan">("all");
   const [userSearch, setUserSearch] = useState("");
+  const [showNewUserPassword, setShowNewUserPassword] = useState(false);
+  const [showResetPasswords, setShowResetPasswords] = useState<Record<string, boolean>>({});
+  const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
+    try {
+      const saved = localStorage.getItem("bpjs_theme_mode");
+      return saved ? saved === "dark" : false;
+    } catch {
+      return false;
+    }
+  });
   const [offlineUsers, setOfflineUsers] = useState<Record<string, boolean>>(() => {
     try {
       const raw = localStorage.getItem(OFFLINE_USERS_KEY);
@@ -69,6 +79,11 @@ function AppShell({
   useEffect(() => {
     localStorage.setItem(OFFLINE_USERS_KEY, JSON.stringify(offlineUsers));
   }, [offlineUsers]);
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = isDarkMode ? "dark" : "light";
+    localStorage.setItem("bpjs_theme_mode", isDarkMode ? "dark" : "light");
+  }, [isDarkMode]);
 
   const handleBackupData = () => {
     const keys = Array.from(
@@ -312,29 +327,44 @@ function AppShell({
   ];
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(59,130,246,0.16),_transparent_25%),linear-gradient(180deg,_#f8fbff_0%,_#edf3ff_42%,_#f8fafc_100%)] print:bg-white">
+    <div
+      className={cn(
+        "min-h-screen print:bg-white",
+        isDarkMode
+          ? "bg-slate-950 text-slate-100"
+          : "bg-[radial-gradient(circle_at_top,_rgba(59,130,246,0.16),_transparent_25%),linear-gradient(180deg,_#f8fbff_0%,_#edf3ff_42%,_#f8fafc_100%)]"
+      )}
+    >
       {/* Header */}
       <header className="no-print border-b border-slate-200/80 bg-slate-950 text-white shadow-[0_16px_40px_rgba(15,23,42,0.18)]">
-        <div className="mx-auto max-w-7xl px-4 py-5 sm:px-6">
-          <div className="flex flex-col items-start justify-between gap-4 lg:flex-row lg:items-center">
-            <div className="flex items-center gap-4">
-              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500 via-indigo-500 to-cyan-400 text-xl font-black shadow-[0_12px_24px_rgba(59,130,246,0.35)]">
+        <div className="mx-auto w-full max-w-7xl px-3 py-4 sm:px-6 lg:py-5">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex items-center gap-3 sm:gap-4">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500 via-indigo-500 to-cyan-400 text-lg font-black shadow-[0_12px_24px_rgba(59,130,246,0.35)] sm:h-14 sm:w-14 sm:text-xl">
                 CU
               </div>
-              <div>
-                <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-slate-300">
+              <div className="min-w-0">
+                <p className="text-[9px] font-semibold uppercase tracking-[0.24em] text-slate-300 sm:text-[10px]">
                   Koperasi Simpan Pinjam
                 </p>
-                <h1 className="text-base font-black tracking-tight sm:text-xl">
+                <h1 className="text-sm font-black tracking-tight sm:text-xl">
                   CU BINA MASYARAKAT
                 </h1>
-                <p className="text-[11px] uppercase tracking-[0.24em] text-slate-400">
+                <p className="text-[9px] uppercase tracking-[0.2em] text-slate-400 sm:text-[11px]">
                   Tagihan Iuran BPJS
                 </p>
               </div>
             </div>
 
-            <div className="flex flex-wrap items-center gap-2.5 lg:justify-end">
+            <div className="flex flex-wrap items-center gap-2 sm:gap-2.5 lg:justify-end">
+              <button
+                type="button"
+                onClick={() => setIsDarkMode((prev) => !prev)}
+                className="rounded-xl border border-white/15 bg-white/5 px-2.5 py-2 text-xs font-semibold text-slate-100 transition hover:bg-white/10"
+                title={isDarkMode ? "Aktifkan mode terang" : "Aktifkan mode gelap"}
+              >
+                {isDarkMode ? "☀️ Light" : "🌙 Dark"}
+              </button>
               {isAdmin && (
                 <>
                   <button
@@ -360,16 +390,16 @@ function AppShell({
                   />
                 </>
               )}
-              <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm font-medium text-slate-100 backdrop-blur-sm">
+              <div className="rounded-xl border border-white/10 bg-white/5 px-2.5 py-2 text-xs font-medium text-slate-100 backdrop-blur-sm sm:px-3 sm:text-sm">
                 Periode: <span className="font-bold text-white">{bulanIni()}</span>
               </div>
-              <div className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm font-medium text-slate-100 backdrop-blur-sm">
+              <div className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-2.5 py-2 text-xs font-medium text-slate-100 backdrop-blur-sm sm:px-3 sm:text-sm">
                 <span className="flex h-7 w-7 items-center justify-center rounded-full bg-gradient-to-br from-cyan-400 to-blue-500 text-xs font-black text-white">
                   {username.charAt(0).toUpperCase()}
                 </span>
-                <div className="leading-tight">
-                  <p className="font-semibold capitalize text-white">{username}</p>
-                  <p className="text-[11px] text-slate-300">{role}</p>
+                <div className="min-w-0 leading-tight">
+                  <p className="truncate font-semibold capitalize text-white">{username}</p>
+                  <p className="text-[10px] text-slate-300 sm:text-[11px]">{role}</p>
                 </div>
               </div>
               <button
@@ -388,22 +418,29 @@ function AppShell({
       </header>
 
       {/* Navigasi tab */}
-      <nav className="no-print sticky top-0 z-20 border-b border-slate-200 bg-white/85 shadow-[0_8px_24px_rgba(15,23,42,0.03)] backdrop-blur-xl">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6">
-          <div className="flex gap-1 overflow-x-auto py-2">
+      <nav className={cn(
+        "no-print sticky top-0 z-20 border-b backdrop-blur-xl",
+        isDarkMode ? "border-slate-800 bg-slate-900/80" : "border-slate-200 bg-white/85 shadow-[0_8px_24px_rgba(15,23,42,0.03)]"
+      )}>
+        <div className="mx-auto w-full max-w-7xl px-3 sm:px-6">
+          <div className="flex gap-1 overflow-x-auto py-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {visibleMenu.map((m) => (
               <button
                 key={m.id}
                 onClick={() => setTab(m.id)}
                 className={cn(
-                  "flex shrink-0 items-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-semibold transition-all duration-200",
+                  "flex shrink-0 items-center gap-2 rounded-xl border px-3 py-2 text-xs font-semibold transition-all duration-200 sm:px-4 sm:py-2.5 sm:text-sm",
                   tab === m.id
-                    ? "border-blue-200 bg-blue-50 text-blue-700 shadow-sm"
-                    : "border-transparent text-slate-500 hover:border-slate-200 hover:bg-slate-50 hover:text-slate-700"
+                    ? isDarkMode
+                      ? "border-blue-500/60 bg-blue-500/15 text-blue-200 shadow-sm"
+                      : "border-blue-200 bg-blue-50 text-blue-700 shadow-sm"
+                    : isDarkMode
+                      ? "border-transparent text-slate-300 hover:border-slate-700 hover:bg-slate-800 hover:text-white"
+                      : "border-transparent text-slate-500 hover:border-slate-200 hover:bg-slate-50 hover:text-slate-700"
                 )}
               >
                 <span>{m.icon}</span>
-                {m.label}
+                <span className="whitespace-nowrap">{m.label}</span>
               </button>
             ))}
           </div>
@@ -411,15 +448,37 @@ function AppShell({
       </nav>
 
       {tab === "rekap" && (
-        <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6">
-          <div className="mb-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <div className="mx-auto w-full max-w-7xl px-3 py-6 sm:px-6">
+          <div className={cn(
+            "mb-6 overflow-hidden rounded-3xl border p-4 shadow-[0_24px_60px_rgba(15,23,42,0.08)] sm:p-6",
+            isDarkMode ? "border-slate-800 bg-slate-900/90" : "border-slate-200 bg-white/80"
+          )}>
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+              <div>
+                <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.25em] text-blue-500">
+                  Dashboard BPJS
+                </p>
+                <h2 className={cn("text-xl font-black tracking-tight sm:text-2xl", isDarkMode ? "text-white" : "text-slate-900")}>
+                  Ringkasan tagihan aktif bulan ini
+                </h2>
+              </div>
+              <div className={cn("inline-flex items-center rounded-full px-3 py-1.5 text-xs font-semibold shadow-sm", isDarkMode ? "bg-emerald-500/15 text-emerald-300 ring-1 ring-emerald-500/30" : "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100")}>
+                ● Live sync
+              </div>
+            </div>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             {kpiCards.map((card) => (
               <div
                 key={card.label}
-                className="rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_8px_24px_rgba(15,23,42,0.04)]"
+                className={cn(
+                  "rounded-2xl border p-4 shadow-[0_8px_24px_rgba(15,23,42,0.04)] transition-transform duration-200 hover:-translate-y-0.5",
+                  isDarkMode ? "border-slate-800 bg-slate-900/80" : "border-slate-200 bg-white"
+                )}
               >
                 <div className="flex items-center justify-between gap-3">
-                  <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-400">
+                  <span className={cn("text-[10px] font-semibold uppercase tracking-[0.22em]", isDarkMode ? "text-slate-400" : "text-slate-400")}>
                     {card.label}
                   </span>
                   <span className={cn("rounded-full px-2 py-1 text-[9px] font-bold uppercase tracking-[0.18em]", card.tone)}>
@@ -427,10 +486,10 @@ function AppShell({
                   </span>
                 </div>
                 <div className={cn("mt-4 h-1.5 rounded-full bg-gradient-to-r", card.accent)} />
-                <p className="mt-4 text-2xl font-black tracking-tight text-slate-900">
+                <p className={cn("mt-4 text-2xl font-black tracking-tight", isDarkMode ? "text-white" : "text-slate-900")}>
                   {card.value}
                 </p>
-                <p className="mt-1 text-xs text-slate-500">{card.detail}</p>
+                <p className={cn("mt-1 text-xs", isDarkMode ? "text-slate-400" : "text-slate-500")}>{card.detail}</p>
               </div>
             ))}
           </div>
@@ -438,14 +497,14 @@ function AppShell({
       )}
 
       {/* Konten */}
-      <main className="mx-auto max-w-7xl px-4 pb-8 sm:px-6">
+      <main className="mx-auto w-full max-w-7xl px-3 pb-8 sm:px-6">
         {isKeuangan && tab === "print" && <MenuPrint />}
         {isKeuangan && tab === "rekap" && <MenuRekap />}
-        {isKeuangan && tab === "cabang" && <MenuCabang />}
         {isKeuangan && tab === "kesehatan" && <MenuKesehatan1 />}
         {!isKeuangan && tab === "rekap" && <MenuRekap />}
         {!isKeuangan && tab === "kesehatan" && <MenuKesehatan1 />}
-        {!isKeuangan && tab === "cabang" && <MenuCabang />}
+        {!isKeuangan && tab === "cabang" && <MenuCabang readOnly={false} />}
+        {isKeuangan && tab === "cabang" && <MenuCabang readOnly={true} />}
         {!isKeuangan && tab === "database" && <MenuDatabase />}
         {!isKeuangan && tab === "print" && <MenuPrint />}
         {!isKeuangan && tab === "backup" && isAdmin && (
@@ -487,7 +546,7 @@ function AppShell({
               </h4>
             </div>
 
-            <div className="grid gap-4 lg:grid-cols-4">
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
               <div>
                 <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
                   Username
@@ -503,12 +562,23 @@ function AppShell({
                 <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
                   Password
                 </label>
-                <input
-                  value={newUser.password}
-                  onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
-                  placeholder="Masukkan password"
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                />
+                <div className="relative">
+                  <input
+                    type={showNewUserPassword ? "text" : "password"}
+                    value={newUser.password}
+                    onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
+                    placeholder="Masukkan password"
+                    className="w-full rounded-lg border border-slate-300 px-3 py-2 pr-10 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowNewUserPassword((prev) => !prev)}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+                    aria-label={showNewUserPassword ? "Sembunyikan password" : "Tampilkan password"}
+                  >
+                    {showNewUserPassword ? "🙈" : "👁️"}
+                  </button>
+                </div>
               </div>
               <div>
                 <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
@@ -535,7 +605,7 @@ function AppShell({
 
             <div className="mt-6 space-y-4">
               <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                <h4 className="text-sm font-bold uppercase tracking-[0.18em] text-slate-500">
+                <h4 className={cn("text-sm font-bold uppercase tracking-[0.18em]", isDarkMode ? "text-slate-400" : "text-slate-500")}>
                   Daftar user
                 </h4>
 
@@ -544,13 +614,23 @@ function AppShell({
                     value={userSearch}
                     onChange={(e) => setUserSearch(e.target.value)}
                     placeholder="Cari username..."
-                    className="w-40 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-700 placeholder:text-slate-400 focus:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                    className={cn(
+                      "w-full max-w-[180px] rounded-full border px-3 py-1.5 text-xs font-medium placeholder:text-slate-400 focus:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-100 sm:w-40",
+                      isDarkMode
+                        ? "border-slate-700 bg-slate-800 text-slate-100"
+                        : "border-slate-200 bg-slate-50 text-slate-700"
+                    )}
                   />
 
                   <select
                     value={selectedRoleFilter}
                     onChange={(e) => setSelectedRoleFilter(e.target.value as "all" | "Administrator" | "Bagian Keuangan")}
-                    className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-700 focus:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                    className={cn(
+                      "rounded-full border px-3 py-1.5 text-xs font-semibold focus:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-100",
+                      isDarkMode
+                        ? "border-slate-700 bg-slate-800 text-slate-100"
+                        : "border-slate-200 bg-slate-50 text-slate-700"
+                    )}
                   >
                     <option value="all">Semua role</option>
                     <option value="Administrator">Administrator</option>
@@ -568,26 +648,26 @@ function AppShell({
                 </div>
               </div>
 
-              <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-                <table className="min-w-full divide-y divide-slate-200 text-left text-xs md:text-sm">
-                  <thead className="bg-slate-50">
+              <div className={cn("overflow-x-auto rounded-2xl border shadow-sm", isDarkMode ? "border-slate-800 bg-slate-900" : "border-slate-200 bg-white")}>
+                <table className={cn("min-w-[680px] divide-y text-left text-xs md:text-sm", isDarkMode ? "divide-slate-800" : "divide-slate-200")}>
+                  <thead className={cn(isDarkMode ? "bg-slate-800/80" : "bg-slate-50")}>
                     <tr>
-                      <th className="px-3 py-2.5 font-semibold text-slate-700">Username</th>
-                      <th className="px-3 py-2.5 font-semibold text-slate-700">Password</th>
-                      <th className="px-3 py-2.5 font-semibold text-slate-700">Role</th>
-                      <th className="px-3 py-2.5 font-semibold text-slate-700">Status</th>
-                      <th className="px-3 py-2.5 text-right font-semibold text-slate-700">Aksi</th>
+                      <th className={cn("px-3 py-2.5 font-semibold", isDarkMode ? "text-slate-200" : "text-slate-700")}>Username</th>
+                      <th className={cn("px-3 py-2.5 font-semibold", isDarkMode ? "text-slate-200" : "text-slate-700")}>Password</th>
+                      <th className={cn("px-3 py-2.5 font-semibold", isDarkMode ? "text-slate-200" : "text-slate-700")}>Role</th>
+                      <th className={cn("px-3 py-2.5 font-semibold", isDarkMode ? "text-slate-200" : "text-slate-700")}>Status</th>
+                      <th className={cn("px-3 py-2.5 text-right font-semibold", isDarkMode ? "text-slate-200" : "text-slate-700")}>Aksi</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-200 bg-white">
+                  <tbody className={cn("divide-y", isDarkMode ? "divide-slate-800 bg-slate-900" : "divide-slate-200 bg-white")}>
                     {visibleUsers.map((user) => {
                       const isOffline = !!offlineUsers[user.username];
 
                       return (
                         <tr key={user.username} className="align-middle">
-                          <td className="px-3 py-2.5 font-semibold text-slate-800">{user.username}</td>
+                          <td className={cn("px-3 py-2.5 font-semibold", isDarkMode ? "text-slate-100" : "text-slate-800")}>{user.username}</td>
                           <td className="px-3 py-2.5">
-                            <span className="rounded-md bg-slate-100 px-2.5 py-1.5 font-mono text-[11px] tracking-[0.18em] text-slate-600">
+                            <span className={cn("rounded-md px-2.5 py-1.5 font-mono text-[11px] tracking-[0.18em]", isDarkMode ? "bg-slate-800 text-slate-200" : "bg-slate-100 text-slate-600")}>
                               {"•".repeat(Math.max(6, user.password.length))}
                             </span>
                           </td>
@@ -596,8 +676,8 @@ function AppShell({
                               className={cn(
                                 "inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold",
                                 user.role === "Administrator"
-                                  ? "bg-blue-100 text-blue-700"
-                                  : "bg-amber-100 text-amber-700"
+                                  ? isDarkMode ? "bg-blue-500/15 text-blue-200" : "bg-blue-100 text-blue-700"
+                                  : isDarkMode ? "bg-amber-500/15 text-amber-200" : "bg-amber-100 text-amber-700"
                               )}
                             >
                               {user.role}
@@ -609,39 +689,73 @@ function AppShell({
                               className={cn(
                                 "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold transition",
                                 isOffline
-                                  ? "bg-slate-200 text-slate-700"
-                                  : "bg-emerald-100 text-emerald-700"
+                                  ? isDarkMode ? "bg-slate-700 text-slate-200" : "bg-slate-200 text-slate-700"
+                                  : isDarkMode ? "bg-emerald-500/15 text-emerald-200" : "bg-emerald-100 text-emerald-700"
                               )}
                               title={isOffline ? "Klik untuk set online" : "Klik untuk set offline"}
                             >
-                              <span className={cn("h-2 w-2 rounded-full", isOffline ? "bg-slate-500" : "bg-emerald-500")} />
+                              <span className={cn("h-2 w-2 rounded-full", isOffline ? "bg-slate-400" : "bg-emerald-400")} />
                               {isOffline ? "Offline" : "Online"}
                             </button>
                           </td>
                           <td className="px-3 py-3">
-                            <div className="flex justify-end gap-2">
+                            <div className="flex flex-wrap justify-end gap-2">
                               <button
                                 onClick={handleUserEdit}
-                                className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-700 hover:bg-blue-100"
+                                className={cn(
+                                  "rounded-lg border px-3 py-2 text-xs font-semibold",
+                                  isDarkMode
+                                    ? "border-blue-500/30 bg-blue-500/10 text-blue-200 hover:bg-blue-500/20"
+                                    : "border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100"
+                                )}
                               >
                                 Simpan
                               </button>
                               {resetDrafts[user.username] !== undefined ? (
                                 <div className="flex items-center gap-2">
-                                  <input
-                                    value={resetDrafts[user.username]}
-                                    onChange={(e) =>
-                                      setResetDrafts((prev) => ({
-                                        ...prev,
-                                        [user.username]: e.target.value,
-                                      }))
-                                    }
-                                    placeholder="Password baru"
-                                    className="w-32 rounded-lg border border-violet-200 bg-violet-50 px-2.5 py-2 text-xs focus:border-violet-400 focus:outline-none focus:ring-1 focus:ring-violet-200"
-                                  />
+                                  <div className="relative">
+                                    <input
+                                      type={showResetPasswords[user.username] ? "text" : "password"}
+                                      value={resetDrafts[user.username]}
+                                      onChange={(e) =>
+                                        setResetDrafts((prev) => ({
+                                          ...prev,
+                                          [user.username]: e.target.value,
+                                        }))
+                                      }
+                                      placeholder="Password baru"
+                                      className={cn(
+                                        "w-32 rounded-lg border px-2.5 py-2 pr-8 text-xs focus:border-violet-400 focus:outline-none focus:ring-1 focus:ring-violet-200",
+                                        isDarkMode
+                                          ? "border-violet-500/30 bg-slate-800 text-slate-100"
+                                          : "border-violet-200 bg-violet-50 text-slate-700"
+                                      )}
+                                    />
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        setShowResetPasswords((prev) => ({
+                                          ...prev,
+                                          [user.username]: !prev[user.username],
+                                        }))
+                                      }
+                                      className={cn(
+                                        "absolute right-1.5 top-1/2 -translate-y-1/2 rounded-md p-1",
+                                        isDarkMode ? "text-violet-200 hover:bg-slate-700" : "text-violet-500 hover:bg-violet-100"
+                                      )}
+                                      aria-label={showResetPasswords[user.username] ? "Sembunyikan password" : "Tampilkan password"}
+                                    >
+                                      {showResetPasswords[user.username] ? "🙈" : "👁️"}
+                                    </button>
+                                  </div>
                                   <button
                                     onClick={() => resetPassword(user.username, resetDrafts[user.username])}
-                                    className="rounded-lg border border-violet-200 bg-violet-50 px-3 py-2 text-xs font-semibold text-violet-700 hover:bg-violet-100"
+                                    className={cn(
+                                      "rounded-lg border px-3 py-2 text-xs font-semibold",
+                                      isDarkMode
+                                        ? "border-violet-500/30 bg-violet-500/10 text-violet-200 hover:bg-violet-500/20"
+                                        : "border-violet-200 bg-violet-50 text-violet-700 hover:bg-violet-100"
+                                    )}
                                   >
                                     OK
                                   </button>
@@ -653,7 +767,12 @@ function AppShell({
                                         return next;
                                       })
                                     }
-                                    className="rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100"
+                                    className={cn(
+                                      "rounded-lg border px-2.5 py-2 text-xs font-semibold",
+                                      isDarkMode
+                                        ? "border-slate-700 bg-slate-800 text-slate-200 hover:bg-slate-700"
+                                        : "border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100"
+                                    )}
                                   >
                                     Batal
                                   </button>
@@ -666,7 +785,12 @@ function AppShell({
                                       [user.username]: "",
                                     }))
                                   }
-                                  className="rounded-lg border border-violet-200 bg-violet-50 px-3 py-2 text-xs font-semibold text-violet-700 hover:bg-violet-100"
+                                  className={cn(
+                                    "rounded-lg border px-3 py-2 text-xs font-semibold",
+                                    isDarkMode
+                                      ? "border-violet-500/30 bg-violet-500/10 text-violet-200 hover:bg-violet-500/20"
+                                      : "border-violet-200 bg-violet-50 text-violet-700 hover:bg-violet-100"
+                                  )}
                                 >
                                   Reset
                                 </button>
@@ -674,7 +798,12 @@ function AppShell({
                               {user.username.toLowerCase() !== "admin" && (
                                 <button
                                   onClick={() => deleteUser(user.username)}
-                                  className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700 hover:bg-red-100"
+                                  className={cn(
+                                    "rounded-lg border px-3 py-2 text-xs font-semibold",
+                                    isDarkMode
+                                      ? "border-red-500/30 bg-red-500/10 text-red-200 hover:bg-red-500/20"
+                                      : "border-red-200 bg-red-50 text-red-700 hover:bg-red-100"
+                                  )}
                                 >
                                   Hapus
                                 </button>
