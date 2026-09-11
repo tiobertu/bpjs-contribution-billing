@@ -94,17 +94,7 @@ export function Login({ onLogin }: { onLogin: (username: string, role: string) =
             </button>
           </form>
 
-          <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-3.5 text-xs text-slate-600">
-            <p className="mb-2 font-bold text-slate-700">Akun demo:</p>
-            <div className="space-y-1.5">
-              <p>
-                Admin: <code className="rounded bg-blue-100 px-1.5 py-0.5 font-mono font-semibold text-blue-700">admin</code> / <code className="rounded bg-blue-100 px-1.5 py-0.5 font-mono font-semibold text-blue-700">bima123</code>
-              </p>
-              <p>
-                Bagian Keuangan: <code className="rounded bg-blue-100 px-1.5 py-0.5 font-mono font-semibold text-blue-700">keuangan</code> / <code className="rounded bg-blue-100 px-1.5 py-0.5 font-mono font-semibold text-blue-700">bima456</code>
-              </p>
-            </div>
-          </div>
+          
         </div>
       </div>
     </div>

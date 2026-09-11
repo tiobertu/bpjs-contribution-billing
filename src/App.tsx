@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { MenuRekap } from "./components/MenuRekap";
 import { MenuKesehatan1 } from "./components/MenuKesehatan1";
 import { MenuCabang } from "./components/MenuCabang";
@@ -19,9 +19,10 @@ import {
   type AppUser,
 } from "./utils/auth";
 
-type Tab = "rekap" | "kesehatan" | "cabang" | "database" | "print";
+type Tab = "rekap" | "kesehatan" | "cabang" | "database" | "print" | "backup" | "settings";
 
 const SESSION_KEY = "bpjs_login_session_v1";
+const OFFLINE_USERS_KEY = "bpjs_offline_users_v1";
 
 const menu: { id: Tab; label: string; icon: string }[] = [
   { id: "rekap", label: "Rekap Peserta BPJS", icon: "📊" },
@@ -29,21 +30,49 @@ const menu: { id: Tab; label: string; icon: string }[] = [
   { id: "cabang", label: "Kantor Cabang", icon: "🏢" },
   { id: "database", label: "Database", icon: "🗄️" },
   { id: "print", label: "Print Out", icon: "🖨️" },
+  { id: "backup", label: "Backup & Restore", icon: "💾" },
+  { id: "settings", label: "Pengaturan User", icon: "👤" },
 ];
 
-function AppShell({ username, role, onLogout }: { username: string; role: string; onLogout: () => void }) {
+function AppShell({
+  username,
+  role,
+  onLogout,
+  onSetSession,
+}: {
+  username: string;
+  role: string;
+  onLogout: () => void;
+  onSetSession: (nextUsername: string, nextRole: string) => void;
+}) {
   const [tab, setTab] = useState<Tab>("rekap");
   const [adminUsers, setAdminUsers] = useState<AppUser[]>(() => getUsers());
   const [newUser, setNewUser] = useState({ username: "", password: "", role: "Administrator" as "Administrator" | "Bagian Keuangan" });
   const [editingUser, setEditingUser] = useState<string>("");
   const [editingPassword, setEditingPassword] = useState("");
   const [editingRole, setEditingRole] = useState<"Administrator" | "Bagian Keuangan">("Administrator");
+  const [showAllUsers, setShowAllUsers] = useState(false);
+  const [selectedRoleFilter, setSelectedRoleFilter] = useState<"all" | "Administrator" | "Bagian Keuangan">("all");
+  const [userSearch, setUserSearch] = useState("");
+  const [offlineUsers, setOfflineUsers] = useState<Record<string, boolean>>(() => {
+    try {
+      const raw = localStorage.getItem(OFFLINE_USERS_KEY);
+      return raw ? (JSON.parse(raw) as Record<string, boolean>) : {};
+    } catch {
+      return {};
+    }
+  });
+  const [resetDrafts, setResetDrafts] = useState<Record<string, string>>({});
   const restoreInputRef = useRef<HTMLInputElement | null>(null);
   const { pegawai, totalTK, totalKES } = useData();
 
+  useEffect(() => {
+    localStorage.setItem(OFFLINE_USERS_KEY, JSON.stringify(offlineUsers));
+  }, [offlineUsers]);
+
   const handleBackupData = () => {
     const keys = Array.from(
-      new Set([...Object.values(STORAGE_KEYS), AUTH_STORAGE_KEY])
+      new Set([...Object.values(STORAGE_KEYS), AUTH_STORAGE_KEY, OFFLINE_USERS_KEY])
     );
     const snapshot = Object.fromEntries(
       keys.map((key) => [key, localStorage.getItem(key)])
@@ -106,6 +135,19 @@ function AppShell({ username, role, onLogout }: { username: string; role: string
         }
       }
 
+      const offlineValue = parsed.data[OFFLINE_USERS_KEY];
+      if (offlineValue !== undefined && offlineValue !== null) {
+        try {
+          const parsedOffline = JSON.parse(offlineValue) as Record<string, boolean>;
+          if (parsedOffline && typeof parsedOffline === "object") {
+            setOfflineUsers(parsedOffline);
+            localStorage.setItem(OFFLINE_USERS_KEY, offlineValue);
+          }
+        } catch {
+          // ignore invalid offline payload
+        }
+      }
+
       event.target.value = "";
       alert("Restore data berhasil. Halaman akan dimuat ulang untuk menerapkan data baru.");
       window.location.reload();
@@ -124,7 +166,9 @@ function AppShell({ username, role, onLogout }: { username: string; role: string
 
   const visibleMenu = useMemo(() => {
     if (isKeuangan) {
-      return menu.filter((m) => m.id !== "database" && m.id !== "kesehatan");
+      return menu.filter(
+        (m) => m.id !== "database" && m.id !== "kesehatan" && m.id !== "backup" && m.id !== "settings"
+      );
     }
     return menu;
   }, [isKeuangan]);
@@ -135,24 +179,37 @@ function AppShell({ username, role, onLogout }: { username: string; role: string
   };
 
   const handleUserSave = () => {
-    if (!newUser.username.trim() || !newUser.password.trim()) {
+    const username = newUser.username.trim();
+    const password = newUser.password.trim();
+
+    if (!username || !password) {
       alert("Username dan password tidak boleh kosong.");
       return;
     }
+
+    const normalized = username.toLowerCase();
     const next = [...adminUsers];
-    const current = next.find((u) => u.username.toLowerCase() === newUser.username.trim().toLowerCase());
-    if (current) {
-      current.password = newUser.password;
-      current.role = newUser.role;
+    const existingIndex = next.findIndex((u) => u.username.toLowerCase() === normalized);
+
+    if (existingIndex >= 0) {
+      next[existingIndex] = {
+        ...next[existingIndex],
+        username,
+        password,
+        role: newUser.role,
+      };
     } else {
       next.push({
-        username: newUser.username.trim(),
-        password: newUser.password,
+        username,
+        password,
         role: newUser.role,
       });
     }
+
     saveAdminUsers(next);
     setNewUser({ username: "", password: "", role: "Administrator" });
+    onSetSession(username, newUser.role);
+    alert(`User "${username}" berhasil disimpan dan masuk ke akun baru.`);
   };
 
   const handleUserEdit = () => {
@@ -176,8 +233,51 @@ function AppShell({ username, role, onLogout }: { username: string; role: string
       alert("Akun admin utama tidak dapat dihapus.");
       return;
     }
+
+    const confirmed = window.confirm(`Yakin ingin menghapus user "${target}"?`);
+    if (!confirmed) return;
+
     const next = adminUsers.filter((u) => u.username.toLowerCase() !== target.toLowerCase());
     saveAdminUsers(next);
+  };
+
+  const resetPassword = (target: string, nextPassword?: string) => {
+    const finalPassword = (nextPassword ?? "123456").trim();
+
+    if (!finalPassword) {
+      alert("Password baru tidak boleh kosong.");
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `Yakin ingin mengubah password user "${target}" menjadi "${finalPassword}"?`
+    );
+    if (!confirmed) return;
+
+    const next = adminUsers.map((u) =>
+      u.username.toLowerCase() === target.toLowerCase() ? { ...u, password: finalPassword } : u
+    );
+    saveAdminUsers(next);
+    setResetDrafts((prev) => ({ ...prev, [target]: "" }));
+    alert(`Password user "${target}" berhasil diubah.`);
+  };
+
+  const visibleUsers = useMemo(() => {
+    const search = userSearch.trim().toLowerCase();
+    const roleFiltered =
+      selectedRoleFilter === "all"
+        ? adminUsers
+        : adminUsers.filter((user) => user.role === selectedRoleFilter);
+
+    const keywordFiltered = !search
+      ? roleFiltered
+      : roleFiltered.filter((user) => user.username.toLowerCase().includes(search));
+
+    return showAllUsers ? keywordFiltered : keywordFiltered.slice(0, 3);
+  }, [adminUsers, selectedRoleFilter, showAllUsers, userSearch]);
+
+  const toggleOfflineStatus = (target: string) => {
+    setOfflineUsers((prev) => ({ ...prev, [target]: !prev[target] }));
   };
 
   const kpiCards = [
@@ -310,30 +410,32 @@ function AppShell({ username, role, onLogout }: { username: string; role: string
         </div>
       </nav>
 
-      <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6">
-        <div className="mb-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          {kpiCards.map((card) => (
-            <div
-              key={card.label}
-              className="rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_8px_24px_rgba(15,23,42,0.04)]"
-            >
-              <div className="flex items-center justify-between gap-3">
-                <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-400">
-                  {card.label}
-                </span>
-                <span className={cn("rounded-full px-2 py-1 text-[9px] font-bold uppercase tracking-[0.18em]", card.tone)}>
-                  Live
-                </span>
+      {tab === "rekap" && (
+        <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6">
+          <div className="mb-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            {kpiCards.map((card) => (
+              <div
+                key={card.label}
+                className="rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_8px_24px_rgba(15,23,42,0.04)]"
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-400">
+                    {card.label}
+                  </span>
+                  <span className={cn("rounded-full px-2 py-1 text-[9px] font-bold uppercase tracking-[0.18em]", card.tone)}>
+                    Live
+                  </span>
+                </div>
+                <div className={cn("mt-4 h-1.5 rounded-full bg-gradient-to-r", card.accent)} />
+                <p className="mt-4 text-2xl font-black tracking-tight text-slate-900">
+                  {card.value}
+                </p>
+                <p className="mt-1 text-xs text-slate-500">{card.detail}</p>
               </div>
-              <div className={cn("mt-4 h-1.5 rounded-full bg-gradient-to-r", card.accent)} />
-              <p className="mt-4 text-2xl font-black tracking-tight text-slate-900">
-                {card.value}
-              </p>
-              <p className="mt-1 text-xs text-slate-500">{card.detail}</p>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Konten */}
       <main className="mx-auto max-w-7xl px-4 pb-8 sm:px-6">
@@ -346,109 +448,244 @@ function AppShell({ username, role, onLogout }: { username: string; role: string
         {!isKeuangan && tab === "cabang" && <MenuCabang />}
         {!isKeuangan && tab === "database" && <MenuDatabase />}
         {!isKeuangan && tab === "print" && <MenuPrint />}
+        {!isKeuangan && tab === "backup" && isAdmin && (
+          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <h3 className="mb-3 text-lg font-bold text-slate-900">Backup & Restore Data</h3>
+            <p className="mb-4 text-sm text-slate-500">
+              Simpan salinan data aplikasi untuk cadangan, lalu restore saat dibutuhkan tanpa kehilangan database.
+            </p>
+            <div className="flex flex-wrap gap-3">
+              <button
+                onClick={handleBackupData}
+                className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
+              >
+                💾 Backup Data
+              </button>
+              <button
+                onClick={() => restoreInputRef.current?.click()}
+                className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-100"
+              >
+                ♻ Restore Data
+              </button>
+              <input
+                ref={restoreInputRef}
+                type="file"
+                accept=".json,application/json"
+                className="hidden"
+                onChange={handleRestoreData}
+              />
+            </div>
+          </div>
+        )}
+        {!isKeuangan && tab === "settings" && isAdmin && (
+          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <h3 className="mb-4 text-lg font-bold text-slate-900">Pengaturan Pengguna</h3>
 
-        {isAdmin && (
-          <div className="mt-6 space-y-6">
-            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-              <h3 className="mb-3 text-lg font-bold text-slate-900">Backup & Restore Data</h3>
-              <p className="mb-4 text-sm text-slate-500">
-                Simpan salinan data aplikasi untuk cadangan, lalu restore saat dibutuhkan tanpa kehilangan database.
-              </p>
-              <div className="flex flex-wrap gap-3">
-                <button
-                  onClick={handleBackupData}
-                  className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
-                >
-                  💾 Backup Data
-                </button>
-                <button
-                  onClick={() => restoreInputRef.current?.click()}
-                  className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-100"
-                >
-                  ♻ Restore Data
-                </button>
+            <div className="mb-4">
+              <h4 className="mb-2 text-sm font-bold uppercase tracking-[0.18em] text-slate-500">
+                Tambah pengguna baru
+              </h4>
+            </div>
+
+            <div className="grid gap-4 lg:grid-cols-4">
+              <div>
+                <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                  Username
+                </label>
                 <input
-                  ref={restoreInputRef}
-                  type="file"
-                  accept=".json,application/json"
-                  className="hidden"
-                  onChange={handleRestoreData}
+                  value={newUser.username}
+                  onChange={(e) => setNewUser({ ...newUser, username: e.target.value })}
+                  placeholder="contoh: userbaru"
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                 />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                  Password
+                </label>
+                <input
+                  value={newUser.password}
+                  onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
+                  placeholder="Masukkan password"
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                  Role
+                </label>
+                <select
+                  value={newUser.role}
+                  onChange={(e) => setNewUser({ ...newUser, role: e.target.value as "Administrator" | "Bagian Keuangan" })}
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                >
+                  <option value="Administrator">Administrator</option>
+                  <option value="Bagian Keuangan">Bagian Keuangan</option>
+                </select>
+              </div>
+              <div className="flex items-end">
+                <button
+                  onClick={handleUserSave}
+                  className="w-full rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-700"
+                >
+                  + Simpan User Baru
+                </button>
               </div>
             </div>
 
-            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-              <h3 className="mb-4 text-lg font-bold text-slate-900">Pengaturan Pengguna</h3>
+            <div className="mt-6 space-y-4">
+              <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                <h4 className="text-sm font-bold uppercase tracking-[0.18em] text-slate-500">
+                  Daftar user
+                </h4>
 
-              <div className="grid gap-4 lg:grid-cols-4">
-              <input
-                value={newUser.username}
-                onChange={(e) => setNewUser({ ...newUser, username: e.target.value })}
-                placeholder="Username baru"
-                className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-              />
-              <input
-                value={newUser.password}
-                onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
-                placeholder="Password"
-                className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-              />
-              <select
-                value={newUser.role}
-                onChange={(e) => setNewUser({ ...newUser, role: e.target.value as "Administrator" | "Bagian Keuangan" })}
-                className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-              >
-                <option value="Administrator">Administrator</option>
-                <option value="Bagian Keuangan">Bagian Keuangan</option>
-              </select>
-              <button
-                onClick={handleUserSave}
-                className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
-              >
-                + Simpan User
-              </button>
-            </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <input
+                    value={userSearch}
+                    onChange={(e) => setUserSearch(e.target.value)}
+                    placeholder="Cari username..."
+                    className="w-40 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-700 placeholder:text-slate-400 focus:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                  />
 
-              <div className="mt-6 space-y-3">
-                {adminUsers.map((user) => (
-                  <div key={user.username} className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3 md:flex-row md:items-center">
-                    <div className="min-w-[120px] font-semibold text-slate-700">{user.username}</div>
-                    <input
-                      value={editingUser.toLowerCase() === user.username.toLowerCase() ? editingPassword : user.password}
-                      onChange={(e) => {
-                        setEditingUser(user.username);
-                        setEditingPassword(e.target.value);
-                        setEditingRole(user.role);
-                      }}
-                      className="flex-1 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                    />
-                    <select
-                      value={editingUser.toLowerCase() === user.username.toLowerCase() ? editingRole : user.role}
-                      onChange={(e) => {
-                        setEditingUser(user.username);
-                        setEditingRole(e.target.value as "Administrator" | "Bagian Keuangan");
-                      }}
-                      className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                    >
-                      <option value="Administrator">Administrator</option>
-                      <option value="Bagian Keuangan">Bagian Keuangan</option>
-                    </select>
+                  <select
+                    value={selectedRoleFilter}
+                    onChange={(e) => setSelectedRoleFilter(e.target.value as "all" | "Administrator" | "Bagian Keuangan")}
+                    className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-700 focus:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                  >
+                    <option value="all">Semua role</option>
+                    <option value="Administrator">Administrator</option>
+                    <option value="Bagian Keuangan">Bagian Keuangan</option>
+                  </select>
+
+                  {adminUsers.length > 3 && (
                     <button
-                      onClick={handleUserEdit}
-                      className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-100"
+                      onClick={() => setShowAllUsers((prev) => !prev)}
+                      className="rounded-full bg-gradient-to-r from-blue-600 to-indigo-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm shadow-blue-200 transition hover:from-blue-700 hover:to-indigo-700"
                     >
-                      Simpan
+                      {showAllUsers ? "Sembunyikan" : "Lihat semua user"}
                     </button>
-                    {user.username.toLowerCase() !== "admin" && (
-                      <button
-                        onClick={() => deleteUser(user.username)}
-                        className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm font-semibold text-red-700 hover:bg-red-100"
-                      >
-                        Hapus
-                      </button>
-                    )}
-                  </div>
-                ))}
+                  )}
+                </div>
+              </div>
+
+              <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+                <table className="min-w-full divide-y divide-slate-200 text-left text-xs md:text-sm">
+                  <thead className="bg-slate-50">
+                    <tr>
+                      <th className="px-3 py-2.5 font-semibold text-slate-700">Username</th>
+                      <th className="px-3 py-2.5 font-semibold text-slate-700">Password</th>
+                      <th className="px-3 py-2.5 font-semibold text-slate-700">Role</th>
+                      <th className="px-3 py-2.5 font-semibold text-slate-700">Status</th>
+                      <th className="px-3 py-2.5 text-right font-semibold text-slate-700">Aksi</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-200 bg-white">
+                    {visibleUsers.map((user) => {
+                      const isOffline = !!offlineUsers[user.username];
+
+                      return (
+                        <tr key={user.username} className="align-middle">
+                          <td className="px-3 py-2.5 font-semibold text-slate-800">{user.username}</td>
+                          <td className="px-3 py-2.5">
+                            <span className="rounded-md bg-slate-100 px-2.5 py-1.5 font-mono text-[11px] tracking-[0.18em] text-slate-600">
+                              {"•".repeat(Math.max(6, user.password.length))}
+                            </span>
+                          </td>
+                          <td className="px-3 py-2.5">
+                            <span
+                              className={cn(
+                                "inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold",
+                                user.role === "Administrator"
+                                  ? "bg-blue-100 text-blue-700"
+                                  : "bg-amber-100 text-amber-700"
+                              )}
+                            >
+                              {user.role}
+                            </span>
+                          </td>
+                          <td className="px-3 py-2.5">
+                            <button
+                              onClick={() => toggleOfflineStatus(user.username)}
+                              className={cn(
+                                "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold transition",
+                                isOffline
+                                  ? "bg-slate-200 text-slate-700"
+                                  : "bg-emerald-100 text-emerald-700"
+                              )}
+                              title={isOffline ? "Klik untuk set online" : "Klik untuk set offline"}
+                            >
+                              <span className={cn("h-2 w-2 rounded-full", isOffline ? "bg-slate-500" : "bg-emerald-500")} />
+                              {isOffline ? "Offline" : "Online"}
+                            </button>
+                          </td>
+                          <td className="px-3 py-3">
+                            <div className="flex justify-end gap-2">
+                              <button
+                                onClick={handleUserEdit}
+                                className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-700 hover:bg-blue-100"
+                              >
+                                Simpan
+                              </button>
+                              {resetDrafts[user.username] !== undefined ? (
+                                <div className="flex items-center gap-2">
+                                  <input
+                                    value={resetDrafts[user.username]}
+                                    onChange={(e) =>
+                                      setResetDrafts((prev) => ({
+                                        ...prev,
+                                        [user.username]: e.target.value,
+                                      }))
+                                    }
+                                    placeholder="Password baru"
+                                    className="w-32 rounded-lg border border-violet-200 bg-violet-50 px-2.5 py-2 text-xs focus:border-violet-400 focus:outline-none focus:ring-1 focus:ring-violet-200"
+                                  />
+                                  <button
+                                    onClick={() => resetPassword(user.username, resetDrafts[user.username])}
+                                    className="rounded-lg border border-violet-200 bg-violet-50 px-3 py-2 text-xs font-semibold text-violet-700 hover:bg-violet-100"
+                                  >
+                                    OK
+                                  </button>
+                                  <button
+                                    onClick={() =>
+                                      setResetDrafts((prev) => {
+                                        const next = { ...prev };
+                                        delete next[user.username];
+                                        return next;
+                                      })
+                                    }
+                                    className="rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100"
+                                  >
+                                    Batal
+                                  </button>
+                                </div>
+                              ) : (
+                                <button
+                                  onClick={() =>
+                                    setResetDrafts((prev) => ({
+                                      ...prev,
+                                      [user.username]: "",
+                                    }))
+                                  }
+                                  className="rounded-lg border border-violet-200 bg-violet-50 px-3 py-2 text-xs font-semibold text-violet-700 hover:bg-violet-100"
+                                >
+                                  Reset
+                                </button>
+                              )}
+                              {user.username.toLowerCase() !== "admin" && (
+                                <button
+                                  onClick={() => deleteUser(user.username)}
+                                  className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700 hover:bg-red-100"
+                                >
+                                  Hapus
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               </div>
             </div>
           </div>
@@ -508,7 +745,12 @@ export default function App() {
 
   return (
     <DataProvider>
-      <AppShell username={username} role={role} onLogout={handleLogout} />
+      <AppShell
+        username={username}
+        role={role}
+        onLogout={handleLogout}
+        onSetSession={handleLogin}
+      />
     </DataProvider>
   );
 }
